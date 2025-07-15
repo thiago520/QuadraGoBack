@@ -3,6 +3,7 @@ package com.quadrago.backend.controllers;
 import com.quadrago.backend.dtos.ProfessorDTO;
 import com.quadrago.backend.models.Professor;
 import com.quadrago.backend.services.ProfessorService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,14 +20,16 @@ public class ProfessorController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'PROFESSOR')")
-    public List<Professor> listar() {
-        return service.listar();
+    public ResponseEntity<List<Professor>> listar() {
+        List<Professor> professores = service.listar();
+        return ResponseEntity.ok(professores);
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'PROFESSOR')")
-    public ResponseEntity<Professor> criar(@RequestBody ProfessorDTO dto) {
-        return ResponseEntity.ok(service.salvar(dto));
+    public ResponseEntity<Professor> criar(@RequestBody @Valid ProfessorDTO dto) {
+        Professor novo = service.salvar(dto);
+        return ResponseEntity.ok(novo);
     }
 
     @GetMapping("/{id}")
@@ -48,7 +51,7 @@ public class ProfessorController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')") // apenas ADMIN pode deletar
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        service.deletar(id);
-        return ResponseEntity.noContent().build();
+        boolean deletado = service.deletar(id);
+        return deletado ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 }

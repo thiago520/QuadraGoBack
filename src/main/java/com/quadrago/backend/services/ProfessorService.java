@@ -28,8 +28,11 @@ public class ProfessorService {
         return repository.findById(id);
     }
 
-    public void deletar(Long id) {
-        repository.deleteById(id);
+    public boolean deletar(Long id) {
+        return repository.findById(id).map(professor -> {
+            repository.delete(professor);
+            return true;
+        }).orElse(false);
     }
 
     public Optional<Professor> atualizar(Long id, ProfessorDTO dto) {

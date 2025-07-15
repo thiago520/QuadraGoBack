@@ -1,0 +1,57 @@
+# docker-compose.yml (CORRIGIDO)
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: quadrago-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: quadrago
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # NOVO SERVIÇO: Spring Boot Admin Server
+  admin-server:
+    image: caoxuyang/spring-boot-admin-server:k8s-api-server-1
+    container_name: quadrago-admin-server
+    restart: unless-stopped
+    ports:
+      # Expõe o painel do Admin na porta 8081 do seu computador
+      - "8081:8080"
+    environment:
+      # Define as credenciais que o servidor Admin vai usar
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: admin
+
+  adminer:
+    image: adminer
+    container_name: quadrago-adminer
+    restart: unless-stopped
+    ports:
+      # Movido para a porta 8082 para não conflitar com o admin-server
+      - "8082:8080"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quadrago-back
+    restart: unless-stopped
+    ports:
+      # Sua API continua na porta 8080
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - admin-server # Adicionado dependência do admin-server
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quadrago
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JAVA_OPTS: -Xms256m -Xmx512m
+
+volumes:
+  pgdata:

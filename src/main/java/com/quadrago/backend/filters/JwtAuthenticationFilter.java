@@ -24,6 +24,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService userDetailsService;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/auth")
+                || path.startsWith("/actuator")
+                || path.equals("/")
+                || path.startsWith("/assets")
+                || path.startsWith("/login")
+                || path.startsWith("/logout")
+                || path.startsWith("/instances")
+                || path.startsWith("/applications");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
