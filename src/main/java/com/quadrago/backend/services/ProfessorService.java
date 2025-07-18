@@ -16,7 +16,11 @@ public class ProfessorService {
     private final ProfessorRepository repository;
 
     public Professor salvar(ProfessorDTO dto) {
-        Professor p = new Professor(null, dto.getNome(), dto.getTelefone(), dto.getCpf());
+        Professor p = Professor.builder()
+                .nome(dto.getNome())
+                .telefone(dto.getTelefone())
+                .cpf(dto.getCpf())
+                .build();
         return repository.save(p);
     }
 

@@ -1,19 +1,26 @@
 package com.quadrago.backend.models;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
+@Builder
 @Entity
 @Table(name = "professores")
-@Data
+@Getter
+@Setter
+@ToString(exclude = "alunos") // evita loop infinito no log
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Professor {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     private String nome;
@@ -21,4 +28,9 @@ public class Professor {
     private String telefone;
 
     private String cpf;
+
+    @ManyToMany(mappedBy = "professores")
+    @JsonBackReference
+    private Set<Aluno> alunos = new HashSet<>();
+
 }

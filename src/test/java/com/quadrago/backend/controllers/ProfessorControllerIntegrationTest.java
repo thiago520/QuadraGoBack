@@ -1,8 +1,10 @@
 package com.quadrago.backend.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quadrago.backend.dtos.AlunoDTO;
 import com.quadrago.backend.dtos.ProfessorDTO;
 import com.quadrago.backend.models.Professor;
+import com.quadrago.backend.repositories.AlunoRepository;
 import com.quadrago.backend.repositories.ProfessorRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +16,10 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,13 +40,23 @@ class ProfessorControllerIntegrationTest {
     @Autowired
     private ProfessorRepository professorRepository;
 
+    @Autowired
+    private AlunoRepository alunoRepository; // <-- 1. Injetar o repositório de Aluno
+
     private Long professorId;
 
     @BeforeEach
     void setup() {
-        professorRepository.deleteAll(); // limpa antes de cada teste
+        // 2. Deletar Alunos PRIMEIRO para remover a dependência da chave estrangeira
+        alunoRepository.deleteAll();
+        professorRepository.deleteAll();
 
-        Professor p = new Professor(null, "Carlos Silva", "11999999999", "11122233344");
+        Professor p = Professor.builder()
+                .nome("Carlos Silva")
+                .telefone("11987654321") // Dados válidos
+                .cpf("12345678901")   // Dados válidos
+                .alunos(Collections.emptySet())
+                .build();
         p = professorRepository.save(p);
         professorId = p.getId();
     }
@@ -100,6 +115,8 @@ class ProfessorControllerIntegrationTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void deveDeletarProfessor() throws Exception {
+        // Para este teste, precisamos garantir que o professor não tenha alunos.
+        // O setup já faz isso, então o professor criado não tem alunos associados.
         mockMvc.perform(delete("/professor/{id}", professorId))
                 .andExpect(status().isNoContent());
 
@@ -127,9 +144,15 @@ class ProfessorControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "USER") // Alterado para um role sem permissão de escrita
+    void deveRetornar403_QuandoUsuarioNaoTemPermissaoParaDeletar() throws Exception {
+        mockMvc.perform(delete("/professor/{id}", professorId))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @WithMockUser(roles = "USER")
     void deveRetornar403_QuandoUsuarioNaoTemPermissao() throws Exception {
-        // sem autenticação ou com role errada (não ADMIN ou PROFESSOR)
         mockMvc.perform(get("/professor"))
                 .andExpect(status().isForbidden());
     }
@@ -137,7 +160,24 @@ class ProfessorControllerIntegrationTest {
     @Test
     void deveRetornar401_QuandoNaoAutenticado() throws Exception {
         mockMvc.perform(delete("/professor/{id}", professorId))
-                .andExpect(status().isUnauthorized()); // usuário não autenticado
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void deveSalvarAlunoComProfessores() throws Exception {
+        Professor professor1 = professorRepository.save(new Professor(null, "Carlos Silva", "11999999999", "12345678901", new HashSet<>()));
+        Professor professor2 = professorRepository.save(new Professor(null, "Maria Lima", "21988888888", "09876543210", new HashSet<>()));
+
+        AlunoDTO alunoDTO = new AlunoDTO("João", "11122233344", "joao@email.com", "11977778888",
+                Set.of(professor1.getId(), professor2.getId()));
+
+        mockMvc.perform(post("/aluno")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(alunoDTO)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nome").value("João"))
+                .andExpect(jsonPath("$.professores.length()").value(2));
     }
 
 }
