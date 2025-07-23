@@ -13,7 +13,7 @@ public class AlunoResponseDTO {
     private String cpf;
     private String email;
     private String telefone;
-    private Set<ProfessorResponseDTO> professores;
+    private Set<ProfessorResumoDTO> professores;
 
     public AlunoResponseDTO(Aluno aluno) {
         this.id = aluno.getId();
@@ -21,9 +21,8 @@ public class AlunoResponseDTO {
         this.cpf = aluno.getCpf();
         this.email = aluno.getEmail();
         this.telefone = aluno.getTelefone();
-        // Mapeia a lista de entidades Professor para uma lista de DTOs
         this.professores = aluno.getProfessores().stream()
-                .map(ProfessorResponseDTO::new)
+                .map(ProfessorResumoDTO::new)
                 .collect(Collectors.toSet());
     }
 }

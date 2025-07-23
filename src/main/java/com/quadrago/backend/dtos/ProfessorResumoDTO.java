@@ -4,11 +4,11 @@ import com.quadrago.backend.models.Professor;
 import lombok.Data;
 
 @Data
-public class ProfessorResponseDTO {
+public class ProfessorResumoDTO {
     private Long id;
     private String nome;
 
-    public ProfessorResponseDTO(Professor professor) {
+    public ProfessorResumoDTO(Professor professor) {
         this.id = professor.getId();
         this.nome = professor.getNome();
     }

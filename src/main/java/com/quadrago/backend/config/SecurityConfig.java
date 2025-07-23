@@ -37,6 +37,7 @@ public class SecurityConfig {
                         // Rotas específicas de role
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/professor/**").hasAnyRole("PROFESSOR", "ADMIN")
+                        .requestMatchers("/turmas/**").hasAnyRole("PROFESSOR", "ADMIN")
                         .requestMatchers("/aluno/**").hasAnyRole("PROFESSOR", "ADMIN", "ALUNO")
                         // Todas as outras requisições precisam de autenticação
                         .anyRequest().authenticated()

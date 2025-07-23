@@ -9,10 +9,9 @@ import lombok.NoArgsConstructor;
 import java.util.Set;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class AlunoDTO {
-
     @NotBlank(message = "Nome é obrigatório")
     private String nome;
 
@@ -26,5 +25,4 @@ public class AlunoDTO {
     private String telefone;
 
     private Set<Long> professoresIds;
-
 }

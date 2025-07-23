@@ -33,6 +33,9 @@ public class Aluno {
 
     private String telefone;
 
+    @Column(nullable = false)
+    private Integer pontuacao = 0;
+
     @ManyToMany
     @JoinTable(
             name = "aluno_professor",
