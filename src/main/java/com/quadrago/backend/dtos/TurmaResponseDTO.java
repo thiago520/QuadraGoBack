@@ -1,6 +1,6 @@
 package com.quadrago.backend.dtos;
 
-import com.quadrago.backend.enums.NivelTurma;
+import com.quadrago.backend.enums.Nivel;
 import com.quadrago.backend.models.Aluno;
 import com.quadrago.backend.models.HorarioAula;
 import com.quadrago.backend.models.Turma;
@@ -14,11 +14,11 @@ public class TurmaResponseDTO {
 
     private Long id;
     private String nome;
-    private NivelTurma nivel;
+    private Nivel nivel;
     private ProfessorResumoDTO professor;
     private Set<AlunoResumoDTO> alunos;
     private Set<HorarioAula> horarios;
-    private NivelTurma classificacao;
+    private Nivel classificacao;
 
     public TurmaResponseDTO(Turma turma) {
         this.id = turma.getId();
@@ -34,18 +34,18 @@ public class TurmaResponseDTO {
         this.classificacao = calcularClassificacao(turma);
     }
 
-    private NivelTurma calcularClassificacao(Turma turma) {
+    private Nivel calcularClassificacao(Turma turma) {
         Set<Aluno> alunos = turma.getAlunos();
 
-        if (alunos.isEmpty()) return NivelTurma.INICIANTE;
+        if (alunos.isEmpty()) return Nivel.INICIANTE;
 
         double media = alunos.stream()
                 .mapToInt(aluno -> aluno.getPontuacao() != null ? aluno.getPontuacao() : 0)
                 .average()
                 .orElse(0.0);
 
-        if (media <= 3) return NivelTurma.INICIANTE;
-        if (media <= 7) return NivelTurma.INTERMEDIARIO;
-        return NivelTurma.AVANCADO;
+        if (media <= 3) return Nivel.INICIANTE;
+        if (media <= 7) return Nivel.INTERMEDIARIO;
+        return Nivel.AVANCADO;
     }
 }

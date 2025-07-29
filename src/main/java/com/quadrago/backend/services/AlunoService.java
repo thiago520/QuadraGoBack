@@ -30,6 +30,7 @@ public class AlunoService {
                 dto.getCpf(),
                 dto.getEmail(),
                 dto.getTelefone(),
+                dto.getPontuacao(),
                 resolveProfessores(dto)
         );
         return alunoRepository.save(aluno);

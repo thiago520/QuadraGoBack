@@ -36,7 +36,7 @@ class AlunoServiceTest {
     @Test
     void deveSalvarAluno() {
         Set<Long> idsProfessores = Set.of(1L);
-        AlunoDTO dto = new AlunoDTO("Joao", "12345678901", "joao@email.com", "9999999999", idsProfessores);
+        AlunoDTO dto = new AlunoDTO("Joao", "12345678901", "joao@email.com", "9999999999", 5, idsProfessores);
 
         when(professorRepository.findAllById(idsProfessores)).thenReturn(new ArrayList<>());
 
@@ -101,7 +101,7 @@ class AlunoServiceTest {
                 .build();
 
         Set<Long> novosProfessores = Set.of(2L);
-        AlunoDTO dto = new AlunoDTO("Novo Nome", "99999999999", "novo@email.com", "8888888888", novosProfessores);
+        AlunoDTO dto = new AlunoDTO("Novo Nome", "99999999999", "novo@email.com", "8888888888", 5, novosProfessores);
 
         when(alunoRepository.findById(1L)).thenReturn(Optional.of(aluno));
         when(professorRepository.findAllById(novosProfessores)).thenReturn(new ArrayList<>());
@@ -134,14 +134,14 @@ class AlunoServiceTest {
 
     @Test
     void deveSalvarAlunoComProfessores() {
-        AlunoDTO dto = new AlunoDTO("Ana", "12345678900", "ana@email.com", "11988887777", Set.of(1L, 2L));
+        AlunoDTO dto = new AlunoDTO("Ana", "12345678900", "ana@email.com", "11988887777", 5, Set.of(1L, 2L));
 
         Professor p1 = new Professor(1L, "Carlos", "11999999999", "12345678901", new HashSet<>());
         Professor p2 = new Professor(2L, "Marcia", "21988888888", "09876543210", new HashSet<>());
 
         when(professorRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(p1, p2));
 
-        Aluno salvo = new Aluno(null, dto.getNome(), dto.getCpf(), dto.getEmail(), dto.getTelefone(), Set.of(p1, p2));
+        Aluno salvo = new Aluno(null, dto.getNome(), dto.getCpf(), dto.getEmail(), dto.getTelefone(), 5, Set.of(p1, p2));
         when(alunoRepository.save(any(Aluno.class))).thenReturn(salvo);
 
         Aluno resultado = alunoService.salvar(dto);

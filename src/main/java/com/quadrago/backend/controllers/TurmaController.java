@@ -2,7 +2,7 @@ package com.quadrago.backend.controllers;
 
 import com.quadrago.backend.dtos.TurmaDTO;
 import com.quadrago.backend.dtos.TurmaResponseDTO;
-import com.quadrago.backend.enums.NivelTurma;
+import com.quadrago.backend.enums.Nivel;
 import com.quadrago.backend.services.TurmaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +54,7 @@ public class TurmaController {
 
     @GetMapping("/{id}/classificacao")
     @PreAuthorize("hasRole('PROFESSOR')")
-    public ResponseEntity<NivelTurma> calcularClassificacao(@PathVariable Long id) {
+    public ResponseEntity<Nivel> calcularClassificacao(@PathVariable Long id) {
         return turmaService.calcularNivelTurma(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

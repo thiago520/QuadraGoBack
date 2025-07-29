@@ -63,7 +63,7 @@ class AlunoControllerIntegrationTest {
         );
 
         // 3. Corrigido o telefone para ter 11 dígitos
-        AlunoDTO dto = new AlunoDTO("Joao", "12345678901", "joao@email.com", "11999999999", Set.of(prof.getId()));
+        AlunoDTO dto = new AlunoDTO("Joao", "12345678901", "joao@email.com", "11999999999", 5, Set.of(prof.getId()));
 
         mockMvc.perform(post("/aluno")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -90,12 +90,13 @@ class AlunoControllerIntegrationTest {
                         .email("carlos@email.com")
                         .cpf("88888888888")
                         .telefone("7777777777") // Corrigido
+                        .pontuacao(3)
                         .professores(Set.of())
                         .build()
         );
 
         // 3. Corrigido o telefone para ter 10 dígitos
-        AlunoDTO dto = new AlunoDTO("Carlos Atualizado", "88888888888", "carlos@email.com", "7777777777", Set.of(prof.getId()));
+        AlunoDTO dto = new AlunoDTO("Carlos Atualizado", "88888888888", "carlos@email.com", "7777777777", 5, Set.of(prof.getId()));
 
         mockMvc.perform(put("/aluno/" + aluno.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -113,6 +114,7 @@ class AlunoControllerIntegrationTest {
                         .email("carlos@email.com")
                         .cpf("88888888888")
                         .telefone("7777777777")
+                        .pontuacao(3)
                         .professores(Set.of())
                         .build()
         );
@@ -131,6 +133,7 @@ class AlunoControllerIntegrationTest {
                         .email("carlos@email.com")
                         .cpf("88888888888")
                         .telefone("7777777777")
+                        .pontuacao(3)
                         .professores(Set.of())
                         .build()
         );
@@ -152,7 +155,7 @@ class AlunoControllerIntegrationTest {
         Professor p1 = professorRepository.save(new Professor(null, "Carlos Silva", "11999999999", "12345678901", new HashSet<>())) ;
         Professor p2 = professorRepository.save(new Professor(null, "Maria Lima", "21988888888", "09876543210", new HashSet<>())) ;
 
-        AlunoDTO dto = new AlunoDTO("João", "11122233344", "joao@email.com", "11977778888", Set.of(p1.getId(), p2.getId()));
+        AlunoDTO dto = new AlunoDTO("João", "11122233344", "joao@email.com", "11977778888", 5, Set.of(p1.getId(), p2.getId()));
 
         mockMvc.perform(post("/aluno")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -169,9 +172,9 @@ class AlunoControllerIntegrationTest {
         Professor p2 = professorRepository.save(new Professor(null, "Marcia", "21988888888", "22222222222", new HashSet<>()));
         Professor p3 = professorRepository.save(new Professor(null, "Joana", "21988887777", "33333333333", new HashSet<>()));
 
-        Aluno aluno = alunoRepository.save(new Aluno(null, "Lucia", "99988877766", "lucia@email.com", "11977778888", Set.of(p1, p2)));
+        Aluno aluno = alunoRepository.save(new Aluno(null, "Lucia", "99988877766", "lucia@email.com", "11977778888", 5, Set.of(p1, p2)));
 
-        AlunoDTO atualizado = new AlunoDTO("Lucia Atualizada", "99988877766", "lucia_nova@email.com", "21999999999", Set.of(p3.getId()));
+        AlunoDTO atualizado = new AlunoDTO("Lucia Atualizada", "99988877766", "lucia_nova@email.com", "21999999999", 5, Set.of(p3.getId()));
 
         mockMvc.perform(put("/aluno/" + aluno.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -185,7 +188,7 @@ class AlunoControllerIntegrationTest {
     @WithMockUser(roles = "ADMIN")
     void deveRemoverAlunoComProfessores() throws Exception {
         Professor p1 = professorRepository.save(new Professor(null, "Carlos", "11999999999", "12312312312", new HashSet<>()));
-        Aluno aluno = alunoRepository.save(new Aluno(null, "Pedro", "88877766655", "pedro@email.com", "11977779999", Set.of(p1)));
+        Aluno aluno = alunoRepository.save(new Aluno(null, "Pedro", "88877766655", "pedro@email.com", "11977779999", 5, Set.of(p1)));
 
         mockMvc.perform(delete("/aluno/" + aluno.getId()))
                 .andExpect(status().isNoContent());
@@ -194,7 +197,7 @@ class AlunoControllerIntegrationTest {
     @Test
     void deveListarAlunosComProfessores() throws Exception {
         Professor p1 = professorRepository.save(new Professor(null, "Carlos", "11999999999", "12312312312", new HashSet<>()));
-        Aluno aluno = alunoRepository.save(new Aluno(null, "Julia", "55566677788", "julia@email.com", "11988887777", Set.of(p1)));
+        Aluno aluno = alunoRepository.save(new Aluno(null, "Julia", "55566677788", "julia@email.com", "11988887777", 5, Set.of(p1)));
 
         alunoRepository.flush(); // força sincronização
 

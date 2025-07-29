@@ -1,6 +1,6 @@
 package com.quadrago.backend.models;
 
-import com.quadrago.backend.enums.NivelTurma;
+import com.quadrago.backend.enums.Nivel;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,7 +22,7 @@ public class Turma {
     private String nome;
 
     @Enumerated(EnumType.STRING)
-    private NivelTurma nivel;
+    private Nivel nivel;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "professor_id")

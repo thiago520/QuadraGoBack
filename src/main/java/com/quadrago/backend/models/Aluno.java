@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Builder
@@ -33,8 +35,8 @@ public class Aluno {
 
     private String telefone;
 
-    @Column(nullable = false)
-    private Integer pontuacao = 0;
+    @OneToMany(mappedBy = "aluno", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<AvaliacaoCaracteristica> avaliacoes = new HashSet<>();
 
     @ManyToMany
     @JoinTable(

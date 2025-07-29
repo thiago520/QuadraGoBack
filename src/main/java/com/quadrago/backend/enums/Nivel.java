@@ -1,6 +1,6 @@
 package com.quadrago.backend.enums;
 
-public enum NivelTurma {
+public enum Nivel {
     INICIANTE,
     INTERMEDIARIO,
     AVANCADO

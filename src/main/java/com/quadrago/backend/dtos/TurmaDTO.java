@@ -1,6 +1,6 @@
 package com.quadrago.backend.dtos;
 
-import com.quadrago.backend.enums.NivelTurma;
+import com.quadrago.backend.enums.Nivel;
 import lombok.Data;
 
 import java.util.Set;
@@ -8,7 +8,7 @@ import java.util.Set;
 @Data
 public class TurmaDTO {
     private String nome;
-    private NivelTurma nivel;
+    private Nivel nivel;
     private Long professorId;
     private Set<Long> alunosIds;
     private Set<HorarioAulaDTO> horarios;

@@ -33,4 +33,8 @@ public class Professor {
     @JsonBackReference
     private Set<Aluno> alunos = new HashSet<>();
 
+    @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Caracteristica> caracteristicas = new HashSet<>();
+
+
 }

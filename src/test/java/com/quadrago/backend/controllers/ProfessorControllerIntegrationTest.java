@@ -169,7 +169,7 @@ class ProfessorControllerIntegrationTest {
         Professor professor1 = professorRepository.save(new Professor(null, "Carlos Silva", "11999999999", "12345678901", new HashSet<>()));
         Professor professor2 = professorRepository.save(new Professor(null, "Maria Lima", "21988888888", "09876543210", new HashSet<>()));
 
-        AlunoDTO alunoDTO = new AlunoDTO("João", "11122233344", "joao@email.com", "11977778888",
+        AlunoDTO alunoDTO = new AlunoDTO("João", "11122233344", "joao@email.com", "11977778888", 5,
                 Set.of(professor1.getId(), professor2.getId()));
 
         mockMvc.perform(post("/aluno")

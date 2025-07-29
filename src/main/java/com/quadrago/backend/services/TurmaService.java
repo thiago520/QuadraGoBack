@@ -2,7 +2,7 @@ package com.quadrago.backend.services;
 
 import com.quadrago.backend.dtos.TurmaDTO;
 import com.quadrago.backend.dtos.TurmaResponseDTO;
-import com.quadrago.backend.enums.NivelTurma;
+import com.quadrago.backend.enums.Nivel;
 import com.quadrago.backend.models.*;
 import com.quadrago.backend.repositories.AlunoRepository;
 import com.quadrago.backend.repositories.ProfessorRepository;
@@ -87,12 +87,12 @@ public class TurmaService {
                 .orElseThrow(() -> new NoSuchElementException("Turma não encontrada"));
     }
 
-    public Optional<NivelTurma> calcularNivelTurma(Long turmaId) {
+    public Optional<Nivel> calcularNivelTurma(Long turmaId) {
         return turmaRepository.findById(turmaId).map(turma -> {
             Set<Aluno> alunos = turma.getAlunos();
 
             if (alunos.isEmpty()) {
-                return NivelTurma.INICIANTE; // padrão se não houver alunos
+                return Nivel.INICIANTE; // padrão se não houver alunos
             }
 
             double media = alunos.stream()
@@ -100,9 +100,9 @@ public class TurmaService {
                     .average()
                     .orElse(0.0);
 
-            if (media <= 3) return NivelTurma.INICIANTE;
-            if (media <= 7) return NivelTurma.INTERMEDIARIO;
-            return NivelTurma.AVANCADO;
+            if (media <= 3) return Nivel.INICIANTE;
+            if (media <= 7) return Nivel.INTERMEDIARIO;
+            return Nivel.AVANCADO;
         });
     }
 
