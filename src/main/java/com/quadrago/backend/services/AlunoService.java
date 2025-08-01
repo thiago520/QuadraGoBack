@@ -8,7 +8,6 @@ import com.quadrago.backend.repositories.AlunoRepository;
 import com.quadrago.backend.repositories.ProfessorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
@@ -24,15 +23,13 @@ public class AlunoService {
     private final ProfessorRepository professorRepository;
 
     public Aluno salvar(AlunoDTO dto) {
-        Aluno aluno = new Aluno(
-                null,
-                dto.getNome(),
-                dto.getCpf(),
-                dto.getEmail(),
-                dto.getTelefone(),
-                dto.getPontuacao(),
-                resolveProfessores(dto)
-        );
+        Aluno aluno = Aluno.builder()
+                .nome(dto.getNome())
+                .cpf(dto.getCpf())
+                .email(dto.getEmail())
+                .telefone(dto.getTelefone())
+                .professores(resolveProfessores(dto))
+                .build();
         return alunoRepository.save(aluno);
     }
 

@@ -2,12 +2,14 @@ package com.quadrago.backend.dtos;
 
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Set;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AlunoDTO {
@@ -22,11 +24,6 @@ public class AlunoDTO {
 
     @Pattern(regexp = "\\d{10,11}", message = "Telefone deve conter 10 ou 11 dígitos")
     private String telefone;
-
-    @NotNull(message =  "Pontuação é obrigatória")
-    @Min(value = 0, message = "Pontuação mínima é 0")
-    @Max(value = 10, message = "Pontuação máxima é 10")
-    private Integer pontuacao;
 
     private Set<Long> professoresIds;
 }

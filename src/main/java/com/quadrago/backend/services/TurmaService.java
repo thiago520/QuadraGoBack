@@ -92,18 +92,26 @@ public class TurmaService {
             Set<Aluno> alunos = turma.getAlunos();
 
             if (alunos.isEmpty()) {
-                return Nivel.INICIANTE; // padrão se não houver alunos
+                return Nivel.INICIANTE;
             }
 
-            double media = alunos.stream()
-                    .mapToInt(Aluno::getPontuacao)
+            List<Double> mediasPorAluno = alunos.stream()
+                    .map(aluno -> aluno.getAvaliacoes().stream()
+                            .mapToDouble(AvaliacaoCaracteristica::getNota)
+                            .average()
+                            .orElse(0.0))
+                    .toList();
+
+            double mediaGeral = mediasPorAluno.stream()
+                    .mapToDouble(Double::doubleValue)
                     .average()
                     .orElse(0.0);
 
-            if (media <= 3) return Nivel.INICIANTE;
-            if (media <= 7) return Nivel.INTERMEDIARIO;
+            if (mediaGeral <= 3) return Nivel.INICIANTE;
+            if (mediaGeral <= 7) return Nivel.INTERMEDIARIO;
             return Nivel.AVANCADO;
         });
     }
+
 
 }

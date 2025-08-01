@@ -4,16 +4,13 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Builder
 @Entity
 @Table(name = "alunos")
-@Getter
-@Setter
+@Data
 @ToString(exclude = "professores") // evita loop infinito no log
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor

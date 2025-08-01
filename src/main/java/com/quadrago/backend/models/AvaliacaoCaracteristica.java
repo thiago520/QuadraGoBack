@@ -12,6 +12,7 @@ import java.util.Objects;
 
 @Entity
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AvaliacaoCaracteristica {

@@ -3,6 +3,7 @@ package com.quadrago.backend.dtos;
 import com.quadrago.backend.models.Aluno;
 import lombok.Data;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -14,6 +15,7 @@ public class AlunoResponseDTO {
     private String email;
     private String telefone;
     private Set<ProfessorResumoDTO> professores;
+    private List<AvaliacaoCaracteristicaDTO> avaliacoes;
 
     public AlunoResponseDTO(Aluno aluno) {
         this.id = aluno.getId();

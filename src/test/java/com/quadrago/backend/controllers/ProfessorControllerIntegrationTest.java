@@ -41,21 +41,21 @@ class ProfessorControllerIntegrationTest {
     private ProfessorRepository professorRepository;
 
     @Autowired
-    private AlunoRepository alunoRepository; // <-- 1. Injetar o repositório de Aluno
+    private AlunoRepository alunoRepository;
 
     private Long professorId;
 
     @BeforeEach
     void setup() {
-        // 2. Deletar Alunos PRIMEIRO para remover a dependência da chave estrangeira
         alunoRepository.deleteAll();
         professorRepository.deleteAll();
 
         Professor p = Professor.builder()
                 .nome("Carlos Silva")
-                .telefone("11987654321") // Dados válidos
-                .cpf("12345678901")   // Dados válidos
+                .telefone("11987654321")
+                .cpf("12345678901")
                 .alunos(Collections.emptySet())
+                .caracteristicas(new HashSet<>())
                 .build();
         p = professorRepository.save(p);
         professorId = p.getId();
@@ -115,8 +115,6 @@ class ProfessorControllerIntegrationTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void deveDeletarProfessor() throws Exception {
-        // Para este teste, precisamos garantir que o professor não tenha alunos.
-        // O setup já faz isso, então o professor criado não tem alunos associados.
         mockMvc.perform(delete("/professor/{id}", professorId))
                 .andExpect(status().isNoContent());
 
@@ -144,7 +142,7 @@ class ProfessorControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER") // Alterado para um role sem permissão de escrita
+    @WithMockUser(roles = "USER")
     void deveRetornar403_QuandoUsuarioNaoTemPermissaoParaDeletar() throws Exception {
         mockMvc.perform(delete("/professor/{id}", professorId))
                 .andExpect(status().isForbidden());
@@ -166,11 +164,29 @@ class ProfessorControllerIntegrationTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void deveSalvarAlunoComProfessores() throws Exception {
-        Professor professor1 = professorRepository.save(new Professor(null, "Carlos Silva", "11999999999", "12345678901", new HashSet<>()));
-        Professor professor2 = professorRepository.save(new Professor(null, "Maria Lima", "21988888888", "09876543210", new HashSet<>()));
+        Professor professor1 = professorRepository.save(Professor.builder()
+                .nome("Carlos Silva")
+                .telefone("11999999999")
+                .cpf("12345678901")
+                .alunos(new HashSet<>())
+                .caracteristicas(new HashSet<>())
+                .build());
 
-        AlunoDTO alunoDTO = new AlunoDTO("João", "11122233344", "joao@email.com", "11977778888", 5,
-                Set.of(professor1.getId(), professor2.getId()));
+        Professor professor2 = professorRepository.save(Professor.builder()
+                .nome("Maria Lima")
+                .telefone("21988888888")
+                .cpf("09876543210")
+                .alunos(new HashSet<>())
+                .caracteristicas(new HashSet<>())
+                .build());
+
+        AlunoDTO alunoDTO = AlunoDTO.builder()
+                .nome("João")
+                .cpf("11122233344")
+                .email("joao@email.com")
+                .telefone("11977778888")
+                .professoresIds(Set.of(professor1.getId(), professor2.getId()))
+                .build();
 
         mockMvc.perform(post("/aluno")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -179,5 +195,4 @@ class ProfessorControllerIntegrationTest {
                 .andExpect(jsonPath("$.nome").value("João"))
                 .andExpect(jsonPath("$.professores.length()").value(2));
     }
-
 }

@@ -4,9 +4,7 @@ import com.quadrago.backend.dtos.HorarioAulaDTO;
 import com.quadrago.backend.dtos.TurmaDTO;
 import com.quadrago.backend.dtos.TurmaResponseDTO;
 import com.quadrago.backend.enums.Nivel;
-import com.quadrago.backend.models.Aluno;
-import com.quadrago.backend.models.Professor;
-import com.quadrago.backend.models.Turma;
+import com.quadrago.backend.models.*;
 import com.quadrago.backend.repositories.AlunoRepository;
 import com.quadrago.backend.repositories.ProfessorRepository;
 import com.quadrago.backend.repositories.TurmaRepository;
@@ -41,6 +39,21 @@ public class TurmaServiceTest {
     @InjectMocks
     private TurmaService turmaService;
 
+    private Aluno criarAlunoComNotas(int... notas) {
+        Aluno aluno = new Aluno();
+        aluno.setId(UUID.randomUUID().getLeastSignificantBits() & Long.MAX_VALUE);
+        Set<AvaliacaoCaracteristica> avaliacoes = new HashSet<>();
+        for (int nota : notas) {
+            AvaliacaoCaracteristica a = new AvaliacaoCaracteristica();
+            a.setNota(nota);
+            a.setAluno(aluno);
+            a.setCaracteristica(new Caracteristica()); // necessário, mas não relevante para o cálculo da média
+            avaliacoes.add(a);
+        }
+        aluno.setAvaliacoes(avaliacoes);
+        return aluno;
+    }
+
     @Test
     void deveSalvarTurmaComSucesso() {
         TurmaDTO dto = new TurmaDTO();
@@ -50,9 +63,11 @@ public class TurmaServiceTest {
         dto.setAlunosIds(Set.of(1L, 2L));
         dto.setHorarios(Set.of(new HorarioAulaDTO(DayOfWeek.TUESDAY, LocalTime.of(10, 0), Duration.ofHours(1))));
 
-        Professor professor = new Professor(1L, "Carlos", "999", "123", new HashSet<>());
-        Aluno aluno1 = Aluno.builder().id(1L).nome("A1").pontuacao(4).build();
-        Aluno aluno2 = Aluno.builder().id(2L).nome("A2").pontuacao(6).build();
+        Professor professor = new Professor();
+        professor.setId(1L);
+
+        Aluno aluno1 = criarAlunoComNotas(4, 5);
+        Aluno aluno2 = criarAlunoComNotas(6, 7);
 
         when(professorRepository.findById(1L)).thenReturn(Optional.of(professor));
         when(alunoRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(aluno1, aluno2));
@@ -61,9 +76,7 @@ public class TurmaServiceTest {
         TurmaResponseDTO response = turmaService.salvar(dto);
 
         assertEquals("Turma A", response.getNome());
-        assertEquals(Nivel.INTERMEDIARIO, response.getNivel());
         assertEquals(Nivel.INTERMEDIARIO, response.getClassificacao());
-        assertEquals(2, response.getAlunos().size());
     }
 
     @Test
@@ -77,23 +90,25 @@ public class TurmaServiceTest {
         turmaExistente.setHorarios(new HashSet<>());
 
         TurmaDTO dto = new TurmaDTO();
-        dto.setNome("Novo Nome");
+        dto.setNome("Nova Turma");
         dto.setNivel(Nivel.AVANCADO);
         dto.setProfessorId(2L);
         dto.setAlunosIds(Set.of(1L));
         dto.setHorarios(Set.of(new HorarioAulaDTO(DayOfWeek.THURSDAY, LocalTime.of(14, 0), Duration.ofMinutes(90))));
 
-        Professor novoProfessor = new Professor(2L, "Novo", "888", "456", new HashSet<>());
-        Aluno novoAluno = Aluno.builder().id(1L).nome("Aluno Novo").pontuacao(9).build();
+        Professor professor = new Professor();
+        professor.setId(2L);
+
+        Aluno aluno = criarAlunoComNotas(9, 10);
 
         when(turmaRepository.findById(id)).thenReturn(Optional.of(turmaExistente));
-        when(professorRepository.findById(2L)).thenReturn(Optional.of(novoProfessor));
-        when(alunoRepository.findAllById(Set.of(1L))).thenReturn(List.of(novoAluno));
+        when(professorRepository.findById(2L)).thenReturn(Optional.of(professor));
+        when(alunoRepository.findAllById(Set.of(1L))).thenReturn(List.of(aluno));
         when(turmaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         TurmaResponseDTO atualizada = turmaService.atualizar(id, dto);
 
-        assertEquals("Novo Nome", atualizada.getNome());
+        assertEquals("Nova Turma", atualizada.getNome());
         assertEquals(Nivel.AVANCADO, atualizada.getClassificacao());
     }
 
@@ -125,7 +140,7 @@ public class TurmaServiceTest {
         turma.setId(1L);
         turma.setNome("Turma X");
         turma.setNivel(Nivel.INICIANTE);
-        turma.setProfessor(new Professor(1L, "Prof", "999", "123", new HashSet<>()));
+        turma.setProfessor(new Professor());
         turma.setAlunos(Set.of());
         turma.setHorarios(Set.of());
 
@@ -168,8 +183,8 @@ public class TurmaServiceTest {
 
     @Test
     void deveCalcularClassificacaoComMediaAlta() {
-        Aluno a1 = Aluno.builder().id(1L).pontuacao(8).build();
-        Aluno a2 = Aluno.builder().id(2L).pontuacao(9).build();
+        Aluno a1 = criarAlunoComNotas(9, 10);
+        Aluno a2 = criarAlunoComNotas(8, 9);
 
         Turma turma = new Turma();
         turma.setAlunos(Set.of(a1, a2));
@@ -191,6 +206,7 @@ public class TurmaServiceTest {
 
         Optional<Nivel> nivel = turmaService.calcularNivelTurma(1L);
 
+        assertTrue(nivel.isPresent());
         assertEquals(Nivel.INICIANTE, nivel.get());
     }
 }

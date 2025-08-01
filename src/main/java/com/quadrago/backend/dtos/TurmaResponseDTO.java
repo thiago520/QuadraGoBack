@@ -6,6 +6,7 @@ import com.quadrago.backend.models.HorarioAula;
 import com.quadrago.backend.models.Turma;
 import lombok.Data;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -39,8 +40,16 @@ public class TurmaResponseDTO {
 
         if (alunos.isEmpty()) return Nivel.INICIANTE;
 
-        double media = alunos.stream()
-                .mapToInt(aluno -> aluno.getPontuacao() != null ? aluno.getPontuacao() : 0)
+        // Calcula a média de todas as notas de todos os alunos
+        List<Integer> todasNotas = alunos.stream()
+                .flatMap(aluno -> aluno.getAvaliacoes().stream())
+                .map(avaliacao -> avaliacao.getNota() != null ? avaliacao.getNota() : 0)
+                .toList();
+
+        if (todasNotas.isEmpty()) return Nivel.INICIANTE;
+
+        double media = todasNotas.stream()
+                .mapToInt(Integer::intValue)
                 .average()
                 .orElse(0.0);
 
@@ -48,4 +57,5 @@ public class TurmaResponseDTO {
         if (media <= 7) return Nivel.INTERMEDIARIO;
         return Nivel.AVANCADO;
     }
+
 }
