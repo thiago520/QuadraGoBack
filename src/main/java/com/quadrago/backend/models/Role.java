@@ -2,22 +2,31 @@ package com.quadrago.backend.models;
 
 import com.quadrago.backend.enums.RoleName;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
-@Table(name = "roles")
-@Data
+@Table(
+        name = "roles",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_roles_name", columnNames = "name")
+        }
+)
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
+@ToString
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Role {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
+    /** Role identifier (e.g., ADMIN, TEACHER, STUDENT) */
     @Enumerated(EnumType.STRING)
-    @Column(unique = true, nullable = false)
+    @Column(name = "name", nullable = false, length = 50)
     private RoleName name;
 }

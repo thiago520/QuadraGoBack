@@ -1,119 +1,139 @@
 # QuadraGo - Backend
 
-Sistema de gerenciamento de quadras esportivas com Spring Boot, JWT, Spring Boot Admin, PostgreSQL e Docker.
+Backend do sistema **QuadraGo**, desenvolvido em **Spring Boot** com **PostgreSQL**, responsável pela gestão de alunos, professores, turmas, características e avaliações.
 
 ---
 
 ## 🚀 Tecnologias
-
-* **Java 22 + Spring Boot 3.2**
-* **Spring Boot Admin (Dashboard)**
-* **Spring Security com JWT**
-* **PostgreSQL 15**
-* **Adminer (Interface DB)**
-* **Docker e Docker Compose**
-* **Makefile (automatização de comandos)**
-
----
-
-## 📆 Estrutura dos containers
-
-| Serviço      | Porta Local | Descrição                                 |
-| ------------ | ----------- | ----------------------------------------- |
-| Backend API  | 8080        | API Java com Spring Boot                  |
-| Admin Server | 8081        | Painel Spring Boot Admin                  |
-| Adminer      | 8082        | Interface web para gerenciar o PostgreSQL |
-| PostgreSQL   | 5432        | Banco de dados relacional                 |
+- **Java 17**
+- **Spring Boot 3**
+- **Spring Security (JWT)**
+- **Spring Data JPA**
+- **PostgreSQL**
+- **Spring Boot Admin**
+- **Lombok**
+- **Actuator**
 
 ---
 
-## 🔧 Requisitos
+## 📂 Estrutura de Pastas
 
-* [Docker Desktop](https://www.docker.com/products/docker-desktop)
-* [Make](https://gnuwin32.sourceforge.net/packages/make.htm) (já instalado no MSYS2, Git Bash ou WSL)
+src/main/java/com/quadrago/backend/
 
----
+├── config/ # Configurações (Security, JWT, etc.)
 
-## ▶️ Comandos via Makefile
+├── controllers/ # REST Controllers
 
-| Comando        | Ação                                                            |
-| -------------- | --------------------------------------------------------------- |
-| `make build`   | Constrói as imagens Docker do projeto                           |
-| `make up`      | Sobe os containers em modo interativo                           |
-| `make up-d`    | Sobe os containers em modo background (recomendado)             |
-| `make down`    | Derruba os containers e redes do projeto                        |
-| `make clean`   | Derruba tudo e remove volumes/dados                             |
-| `make rebuild` | Força rebuild e sobe novamente tudo                             |
-| `make logs`    | Exibe os logs do container backend                              |
-| `make bash`    | Acessa o shell do container backend (sh)                        |
-| `make test`    | Executa os testes Maven manualmente dentro do container backend |
+├── dtos/ # Data Transfer Objects
+
+├── filters/ # Filtros (ex: JwtAuthenticationFilter)
+
+├── models/ # Entidades JPA
+
+├── repositories/ # Repositórios JPA
+
+├── services/ # Serviços de negócio
+
 
 ---
 
-## 🔐 Credenciais padrão
-
-| Tipo              | Usuário  | Senha    |
-| ----------------- | -------- | -------- |
-| Spring Boot Admin | admin    | admin    |
-| Spring Security   | admin    | admin    |
-| PostgreSQL        | postgres | postgres |
+## 🔑 Autenticação
+- Autenticação baseada em **JWT**.
+- Usuários podem ter papéis (`ADMIN`, `TEACHER`, `STUDENT`).
+- Controle de acesso aplicado via **Spring Security**.
 
 ---
 
-## 📂 Endpoints úteis
+## 📌 Endpoints REST
 
-| URL                              | Descrição                             |
-| -------------------------------- | ------------------------------------- |
-| `http://localhost:8080`          | Backend API                           |
-| `http://localhost:8081`          | Painel do Spring Boot Admin           |
-| `http://localhost:8080/actuator` | Endpoints do Actuator                 |
-| `http://localhost:8082`          | Adminer (interface de banco de dados) |
+### 🔹 Auth
+| Método | Endpoint           | Descrição                          | Acesso |
+|--------|-------------------|------------------------------------|--------|
+| POST   | `/auth/login`      | Login e geração de JWT             | Público |
+| POST   | `/auth/register`   | Registro de novo usuário           | Público |
 
 ---
 
-## 🔪 Testes
+### 🔹 Students (`Aluno`)
+| Método | Endpoint               | Descrição                  | Acesso |
+|--------|-----------------------|----------------------------|--------|
+| GET    | `/students`            | Listar todos os alunos     | `ADMIN`, `TEACHER`, `STUDENT` |
+| GET    | `/students/{id}`       | Buscar aluno por ID        | `ADMIN`, `TEACHER`, `STUDENT` |
+| POST   | `/students`            | Criar aluno                | `ADMIN`, `TEACHER` |
+| PUT    | `/students/{id}`       | Atualizar aluno            | `ADMIN`, `TEACHER` |
+| DELETE | `/students/{id}`       | Deletar aluno              | `ADMIN` |
 
-Para executar os testes unitários:
+---
 
-```bash
+### 🔹 Teachers (`Professor`)
+| Método | Endpoint               | Descrição                    | Acesso |
+|--------|-----------------------|------------------------------|--------|
+| GET    | `/teachers`            | Listar todos os professores | `ADMIN` |
+| GET    | `/teachers/{id}`       | Buscar professor por ID      | `ADMIN` |
+| POST   | `/teachers`            | Criar professor              | `ADMIN` |
+| PUT    | `/teachers/{id}`       | Atualizar professor          | `ADMIN` |
+| DELETE | `/teachers/{id}`       | Deletar professor            | `ADMIN` |
+
+---
+
+### 🔹 Class Groups (`Turma`)
+| Método | Endpoint                    | Descrição               | Acesso |
+|--------|----------------------------|-------------------------|--------|
+| GET    | `/class-groups`             | Listar todas as turmas  | `ADMIN`, `TEACHER` |
+| GET    | `/class-groups/{id}`        | Buscar turma por ID     | `ADMIN`, `TEACHER` |
+| POST   | `/class-groups`             | Criar turma             | `ADMIN`, `TEACHER` |
+| PUT    | `/class-groups/{id}`        | Atualizar turma         | `ADMIN`, `TEACHER` |
+| DELETE | `/class-groups/{id}`        | Deletar turma           | `ADMIN`, `TEACHER` |
+
+---
+
+### 🔹 Traits (`Caracteristica`)
+| Método | Endpoint                        | Descrição                               | Acesso |
+|--------|--------------------------------|-----------------------------------------|--------|
+| GET    | `/traits/teacher/{teacherId}`   | Listar características de um professor  | `TEACHER` |
+| POST   | `/traits`                       | Criar característica                    | `TEACHER` |
+| PUT    | `/traits/{id}`                  | Atualizar característica                | `TEACHER` |
+| DELETE | `/traits/{id}`                  | Deletar característica                  | `TEACHER` |
+
+---
+
+### 🔹 Trait Evaluations (`AvaliacaoCaracteristica`)
+| Método | Endpoint                                       | Descrição                           | Acesso |
+|--------|-----------------------------------------------|-------------------------------------|--------|
+| POST   | `/trait-evaluations`                          | Criar avaliação                     | `TEACHER`, `STUDENT` |
+| GET    | `/trait-evaluations/student/{studentId}`      | Listar avaliações de um aluno       | `TEACHER`, `STUDENT` |
+| PUT    | `/trait-evaluations/{studentId}/{traitId}`    | Atualizar avaliação                 | `TEACHER`, `STUDENT` |
+| DELETE | `/trait-evaluations/{studentId}/{traitId}`    | Deletar avaliação                   | `TEACHER` |
+
+---
+
+### 🔹 Admin & Monitoramento
+| Método | Endpoint                | Descrição                        | Acesso |
+|--------|------------------------|----------------------------------|--------|
+| GET    | `/actuator/**`          | Endpoints do Actuator            | Público |
+| GET    | `/admin/**`             | Endpoints administrativos        | `ADMIN` |
+| GET    | `/applications/**`      | Spring Boot Admin (monitoramento)| Autenticado |
+| GET    | `/instances/**`         | Spring Boot Admin (instâncias)   | Autenticado |
+
+---
+
+## ✅ Testes
+O projeto conta com **testes unitários e de integração** cobrindo:
+- Services
+- Controllers
+- Regras de segurança
+- Regras de negócio
+
+Para rodar os testes:
+
+```sh
 make test
-```
 
-(Executado dentro do container, com `mvn test`)
 
----
+📌 Próximos Passos
 
-## 📁 Estrutura de pastas
+Implementar relatórios de desempenho.
 
-```
-.
-├── src/                    # Código-fonte da aplicação Spring Boot
-├── Dockerfile              # Imagem com etapa de build + execução
-├── docker-compose.yml      # Orquestra os serviços
-├── Makefile                # Comandos automatizados
-├── README.md               # Este arquivo
-└── application.properties  # Configuração da aplicação
-```
+Criar notificações para alunos e professores.
 
----
-
-## ✅ Observações
-
-* O backend registra automaticamente no Spring Boot Admin.
-* O `JwtAuthenticationFilter` e o Basic Auth coexistem sem conflitos.
-* O painel admin está isolado do backend para evitar conflitos de rota e autenticação.
-* A imagem `caoxuyang/spring-boot-admin-server:k8s-api-server-1` foi usada com sucesso para o Spring Boot Admin Server.
-
----
-
-## 💬 Suporte
-
-Se surgir algum erro ou comportamento estranho, verifique:
-
-* Logs com `make logs`
-* URLs internas dos containers (`backend`, `admin-server`)
-* Firewall/bloqueio local nas portas 8080, 8081, 8082
-
----
-
-> Desenvolvido com ❤️ para facilitar a gestão de quadras esportivas.
+Melhorar documentação com exemplos de payloads.

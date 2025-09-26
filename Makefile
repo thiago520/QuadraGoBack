@@ -1,48 +1,81 @@
-# Nome da imagem para facilitar reutilização
-IMAGE_NAME=quadrago-backend
+# ==== Config ====
+.RECIPEPREFIX := >
+SHELL := /bin/sh
+COMPOSE ?= docker compose
+SERVICE ?= backend
+IMAGE_NAME ?= quadrago-backend
 
-# Executa os testes usando Maven localmente
+# Escolhe wrapper conforme SO
+UNAME_S := $(shell uname -s)
+ifeq ($(OS),Windows_NT)
+MVNW := mvnw.cmd
+else
+MVNW := ./mvnw
+endif
+
+.DEFAULT_GOAL := help
+
+.PHONY: help
+help:
+> echo "Targets:"
+> echo "  test             - roda testes com Maven Wrapper (perfil test)"
+> echo "  test-docker      - roda testes em container maven usando cache local (~/.m2)"
+> echo "  build            - docker compose build"
+> echo "  up               - docker compose up (interativo)"
+> echo "  up-d             - docker compose up -d (detached)"
+> echo "  down             - docker compose down"
+> echo "  clean            - down + remove volumes + órfãos"
+> echo "  rebuild          - clean + build --no-cache + up"
+> echo "  logs             - tail dos logs"
+> echo "  bash             - shell dentro do service $(SERVICE)"
+> echo "  status           - docker compose ps"
+
+.PHONY: test
 test:
-	mvnw.cmd test
+> $(MVNW) -Dspring.profiles.active=test test
 
-# Executa os testes dentro do container de build (sem subir app)
+.PHONY: test-docker
 test-docker:
-	docker run --rm -v $(PWD):/app -w /app maven:3.9.6-eclipse-temurin-22-alpine mvn test
+> docker run --rm \
+>  -v "$(HOME)/.m2":/root/.m2 \
+>  -v "$(PWD)":/app -w /app \
+>  maven:3.9.6-eclipse-temurin-22-alpine \
+>  mvn -Dspring.profiles.active=test test
 
-# Constrói a imagem com docker compose
+.PHONY: build
 build:
-	docker compose build
+> $(COMPOSE) build
 
-# Sobe os containers em modo interativo
+.PHONY: up
 up:
-	docker compose up
+> $(COMPOSE) up
 
-# Sobe os containers em background (detached)
+.PHONY: up-d
 up-d:
-	docker compose up -d
+> $(COMPOSE) up -d
 
-# Derruba todos os containers e redes do projeto
+.PHONY: down
 down:
-	docker compose down
+> $(COMPOSE) down
 
-# Derruba, remove volumes e limpa tudo
+.PHONY: clean
 clean:
-	docker compose down -v --remove-orphans
+> $(COMPOSE) down -v --remove-orphans
 
-# Rebuild forçado + up
+.PHONY: rebuild
 rebuild:
-	docker compose down -v --remove-orphans
-	docker compose build --no-cache
-	docker compose up
+> $(COMPOSE) down -v --remove-orphans
+> $(COMPOSE) build --no-cache
+> $(COMPOSE) up
 
-# Mostra os logs (como tail -f)
+.PHONY: logs
 logs:
-	docker compose logs -f
+> $(COMPOSE) logs -f
 
-# Executa um shell no container backend (usa sh por padrão)
+.PHONY: bash
 bash:
-	docker exec -it quadrago-back sh
+> $(COMPOSE) exec $(SERVICE) sh
 
-# Verifica o status dos containers
+.PHONY: status
 status:
-	docker compose ps
+> $(COMPOSE) ps

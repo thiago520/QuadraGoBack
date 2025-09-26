@@ -6,14 +6,18 @@ import com.quadrago.backend.models.User;
 import com.quadrago.backend.repositories.RoleRepository;
 import com.quadrago.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
 import java.util.Set;
 
+@Slf4j
 @Component
+@Profile("!test") // não executar no profile de testes
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
@@ -22,43 +26,43 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public void run(String... args) throws Exception {
+    @Transactional
+    public void run(String... args) {
         // Cria roles se não existirem
         createRoleIfNotFound(RoleName.ADMIN);
-        createRoleIfNotFound(RoleName.PROFESSOR);
+        createRoleIfNotFound(RoleName.TEACHER); // manter enum existente
 
-        // Cria usuário admin se não existir
+        // Cria usuários básicos, se não existirem
         createUserIfNotFound("admin", "admin@quadrago.com", "admin123", RoleName.ADMIN);
-
-        // Cria usuário professor se não existir
-        createUserIfNotFound("professor", "professor@quadrago.com", "professor123", RoleName.PROFESSOR);
+        createUserIfNotFound("teacher", "teacher@quadrago.com", "professor123", RoleName.TEACHER);
     }
 
     private void createRoleIfNotFound(RoleName roleName) {
         roleRepository.findByName(roleName).orElseGet(() -> {
-            Role role = new Role();
-            role.setName(roleName);
-            return roleRepository.save(role);
+            Role role = Role.builder().name(roleName).build();
+            Role saved = roleRepository.save(role);
+            log.info("Role {} criada.", roleName);
+            return saved;
         });
     }
 
     private void createUserIfNotFound(String username, String email, String rawPassword, RoleName roleName) {
-        if (userRepository.findByEmail(email).isEmpty()) {
+        userRepository.findByEmail(email.toLowerCase()).ifPresentOrElse(existing -> {
+            log.debug("Usuário {} já existe. Nenhuma alteração aplicada.", email);
+        }, () -> {
             Role role = roleRepository.findByName(roleName)
-                    .orElseThrow(() -> new RuntimeException("Role " + roleName + " não encontrada no banco"));
+                    .orElseThrow(() -> new IllegalStateException("Role " + roleName + " não encontrada"));
 
-            User user = new User();
-            user.setName(username);
-            user.setEmail(email);
-            user.setPassword(passwordEncoder.encode(rawPassword));
-
-            Set<Role> roles = new HashSet<>();
-            roles.add(role);
-            user.setRoles(roles);
+            User user = User.builder()
+                    .name(username)
+                    .email(email) // será normalizado para lowercase pelo @PrePersist da entidade
+                    .password(passwordEncoder.encode(rawPassword))
+                    .roles(Set.of(role))
+                    .build();
 
             userRepository.save(user);
-
             System.out.println("Usuário " + username + " criado com sucesso.");
-        }
+            log.info("Usuário {} criado com role {}.", email, roleName);
+        });
     }
 }
