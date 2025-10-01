@@ -21,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
@@ -31,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(classes = BackendApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import(TestSecurityConfig.class) // <<— PasswordEncoder + SecurityFilterChain + @EnableMethodSecurity
+@Import(TestSecurityConfig.class) // PasswordEncoder + SecurityFilterChain + @EnableMethodSecurity
 class StudentControllerIntegrationTest {
 
     @Autowired
@@ -46,6 +47,15 @@ class StudentControllerIntegrationTest {
     @Autowired
     private TeacherRepository teacherRepository;
 
+    // --- helper para e-mails únicos (evita violação do índice único de email) ---
+    private static final AtomicLong EMAIL_SEQ = new AtomicLong(1);
+    private static String uniqueEmail(String base) {
+        long n = EMAIL_SEQ.getAndIncrement();
+        int at = base.indexOf('@');
+        if (at <= 0) return base + "+" + n;
+        return base.substring(0, at) + "+" + n + base.substring(at);
+    }
+
     @BeforeEach
     void setUp() {
         studentRepository.deleteAll();
@@ -58,6 +68,7 @@ class StudentControllerIntegrationTest {
         Teacher teacher = teacherRepository.save(
                 Teacher.builder()
                         .name("Prof. Test")
+                        .email(uniqueEmail("prof.a@exemplo.com"))
                         .phone("11999999999")
                         .nationalId("12345678901")
                         .build()
@@ -85,6 +96,7 @@ class StudentControllerIntegrationTest {
         Teacher teacher = teacherRepository.save(
                 Teacher.builder()
                         .name("Prof. Test")
+                        .email(uniqueEmail("prof.a@exemplo.com"))
                         .phone("11999999999")
                         .nationalId("12345678901")
                         .build()
@@ -162,8 +174,22 @@ class StudentControllerIntegrationTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldCreateStudentWithTeachers() throws Exception {
-        Teacher t1 = teacherRepository.save(Teacher.builder().name("Carlos Silva").phone("11999999999").nationalId("12345678901").build());
-        Teacher t2 = teacherRepository.save(Teacher.builder().name("Maria Lima").phone("21988888888").nationalId("09876543210").build());
+        Teacher t1 = teacherRepository.save(
+                Teacher.builder()
+                        .name("Carlos Silva")
+                        .email(uniqueEmail("prof.a@exemplo.com"))
+                        .phone("11999999999")
+                        .nationalId("12345678901")
+                        .build()
+        );
+        Teacher t2 = teacherRepository.save(
+                Teacher.builder()
+                        .name("Maria Lima")
+                        .email(uniqueEmail("prof.b@exemplo.com"))
+                        .phone("21988888888")
+                        .nationalId("09876543210")
+                        .build()
+        );
 
         StudentDTO dto = new StudentDTO(
                 "Joao",
@@ -184,9 +210,30 @@ class StudentControllerIntegrationTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldUpdateStudentWithNewTeachers() throws Exception {
-        Teacher t1 = teacherRepository.save(Teacher.builder().name("Carlos").phone("11999999999").nationalId("11111111111").build());
-        Teacher t2 = teacherRepository.save(Teacher.builder().name("Marcia").phone("21988888888").nationalId("22222222222").build());
-        Teacher t3 = teacherRepository.save(Teacher.builder().name("Joana").phone("21988887777").nationalId("33333333333").build());
+        Teacher t1 = teacherRepository.save(
+                Teacher.builder()
+                        .name("Carlos")
+                        .email(uniqueEmail("prof.a@exemplo.com"))
+                        .phone("11999999999")
+                        .nationalId("11111111111")
+                        .build()
+        );
+        Teacher t2 = teacherRepository.save(
+                Teacher.builder()
+                        .name("Marcia")
+                        .email(uniqueEmail("prof.b@exemplo.com"))
+                        .phone("21988888888")
+                        .nationalId("22222222222")
+                        .build()
+        );
+        Teacher t3 = teacherRepository.save(
+                Teacher.builder()
+                        .name("Joana")
+                        .email(uniqueEmail("prof.c@exemplo.com"))
+                        .phone("21988887777")
+                        .nationalId("33333333333")
+                        .build()
+        );
 
         Student student = studentRepository.save(
                 Student.builder()
@@ -216,7 +263,14 @@ class StudentControllerIntegrationTest {
 
     @Test
     void shouldListStudentsWithTeachers() throws Exception {
-        Teacher t1 = teacherRepository.save(Teacher.builder().name("Carlos").phone("11999999999").nationalId("12312312312").build());
+        Teacher t1 = teacherRepository.save(
+                Teacher.builder()
+                        .name("Carlos")
+                        .email(uniqueEmail("prof.list@exemplo.com"))
+                        .phone("11999999999")
+                        .nationalId("12312312312")
+                        .build()
+        );
 
         Student student = studentRepository.save(
                 Student.builder()

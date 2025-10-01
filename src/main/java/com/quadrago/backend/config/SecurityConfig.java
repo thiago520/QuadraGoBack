@@ -43,30 +43,33 @@ public class SecurityConfig {
         log.info("Building SecurityFilterChain (stateless, JWT + Basic for Admin endpoints).");
 
         return http
-                // stateless + csrf off for APIs
+                // Stateless API + CSRF off
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // exception handling with logging
+                // Exception handling with logging
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(loggingAuthEntryPoint())
                         .accessDeniedHandler(loggingAccessDeniedHandler())
                 )
 
-                // authorization rules
+                // Authorization rules
                 .authorizeHttpRequests(auth -> auth
                         // --- PUBLIC ---
                         .requestMatchers("/", "/login", "/logout", "/auth/**", "/assets/**").permitAll()
-                        // actuator endpoints (expose carefully in prod; keep secured if needed)
+                        // actuator (exponha com cuidado em prod)
                         .requestMatchers("/actuator/**").permitAll()
 
-                        // --- SPRING BOOT ADMIN (requires auth; Basic is enabled below) ---
+                        // >>> TEACHER SIGN-UP (público) <<<
+                        .requestMatchers(HttpMethod.POST, "/teachers").permitAll()
+
+                        // --- SPRING BOOT ADMIN (requires auth; Basic enabled below) ---
                         .requestMatchers("/instances/**", "/applications/**").authenticated()
 
                         // --- ADMIN ---
                         .requestMatchers("/admin/**").hasRole(ADMIN)
 
-                        // --- TEACHER DOMAIN ---
+                        // --- TEACHER DOMAIN (demais rotas protegidas) ---
                         .requestMatchers("/teachers/**").hasAnyRole(TEACHER, ADMIN)
                         .requestMatchers("/class-groups/**").hasAnyRole(TEACHER, ADMIN)
                         .requestMatchers("/traits/**").hasRole(TEACHER)
@@ -78,7 +81,7 @@ public class SecurityConfig {
                         // --- STUDENTS ---
                         .requestMatchers("/students/**").hasAnyRole(TEACHER, ADMIN, STUDENT)
 
-                        // any other endpoint must be authenticated
+                        // Any other endpoint must be authenticated
                         .anyRequest().authenticated()
                 )
 

@@ -2,13 +2,25 @@ package com.quadrago.backend.models;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "teachers")
+@Table(
+        name = "teachers",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_teachers_email", columnNames = "email"),
+                @UniqueConstraint(name = "uk_teachers_cpf", columnNames = "cpf")
+        },
+        indexes = {
+                @Index(name = "idx_teachers_email", columnList = "email"),
+                @Index(name = "idx_teachers_cpf", columnList = "cpf")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,14 +36,19 @@ public class Teacher {
     private Long id;
 
     /** Full name of the teacher */
-    @Column(name = "name")
+    @NotBlank
+    @Column(name = "name", nullable = false, length = 160)
     private String name;
 
-    @Column(name = "phone")
+    /** Public email for login/contato (unique) */
+    @Column(name = "email", nullable = false, length = 255)
+    private String email;
+
+    @Column(name = "phone", length = 11)
     private String phone;
 
     /** National ID; keeps DB column 'cpf' to avoid migration now */
-    @Column(name = "cpf", unique = true)
+    @Column(name = "cpf", length = 11)
     private String nationalId;
 
     /** Students associated to this teacher (inverse side of student_teacher) */
@@ -53,7 +70,6 @@ public class Teacher {
     /* --- convenience helpers for bidirectional sync (optional) --- */
     public void addStudent(Student s) {
         this.students.add(s);
-        // if you later add mappedBy="students" in Student side sync there:
         // s.getTeachers().add(this);
     }
 

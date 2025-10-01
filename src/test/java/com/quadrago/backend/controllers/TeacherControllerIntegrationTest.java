@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,9 +62,10 @@ class TeacherControllerIntegrationTest {
         teacherRepository.deleteAllInBatch();
         studentRepository.deleteAllInBatch();
 
-        // 4) Cenário base
+        // 4) Cenário base: teacher existente
         Teacher t = Teacher.builder()
                 .name("Carlos Silva")
+                .email("carlos.silva@exemplo.com")
                 .phone("11987654321")
                 .nationalId("12345678901")
                 .build();
@@ -71,13 +73,16 @@ class TeacherControllerIntegrationTest {
         teacherId = t.getId();
     }
 
+    // ----- LIST / GET protegidos -----
+
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldListTeachers() throws Exception {
         mockMvc.perform(get("/teachers"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name", is("Carlos Silva")));
+                .andExpect(jsonPath("$[0].name", is("Carlos Silva")))
+                .andExpect(jsonPath("$[0].email", is("carlos.silva@exemplo.com")));
     }
 
     @Test
@@ -86,14 +91,17 @@ class TeacherControllerIntegrationTest {
         mockMvc.perform(get("/teachers/{id}", teacherId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name", is("Carlos Silva")))
+                .andExpect(jsonPath("$.email", is("carlos.silva@exemplo.com")))
                 .andExpect(jsonPath("$.nationalId", is("12345678901")));
     }
 
+    // ----- CREATE público (sem autenticação) -----
+
     @Test
-    @WithMockUser(roles = "ADMIN")
-    void shouldCreateTeacher() throws Exception {
+    void shouldCreateTeacher_Public_NoAuth_201() throws Exception {
         TeacherDTO dto = TeacherDTO.builder()
                 .name("Joao da Silva")
+                .email("joao.silva@exemplo.com")
                 .phone("11988887777")
                 .nationalId("98765432100")
                 .build();
@@ -101,17 +109,34 @@ class TeacherControllerIntegrationTest {
         mockMvc.perform(post("/teachers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk()) // seu controller retorna 200 OK no create
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", containsString("/teachers/")))
                 .andExpect(jsonPath("$.name", is("Joao da Silva")))
+                .andExpect(jsonPath("$.email", is("joao.silva@exemplo.com")))
                 .andExpect(jsonPath("$.phone", is("11988887777")))
                 .andExpect(jsonPath("$.nationalId", is("98765432100")));
     }
+
+    @Test
+    void shouldReturn400WhenCreateWithInvalidBody_Public() throws Exception {
+        // DTO vazio viola @NotBlank/@Email/@Pattern
+        TeacherDTO invalid = new TeacherDTO();
+
+        mockMvc.perform(post("/teachers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors").isArray());
+    }
+
+    // ----- UPDATE / DELETE protegidos -----
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldUpdateTeacher() throws Exception {
         TeacherDTO dto = TeacherDTO.builder()
                 .name("Updated Name")
+                .email("carlos.updated@exemplo.com")
                 .phone("11977776666")
                 .nationalId("99988877766")
                 .build();
@@ -121,6 +146,7 @@ class TeacherControllerIntegrationTest {
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name", is("Updated Name")))
+                .andExpect(jsonPath("$.email", is("carlos.updated@exemplo.com")))
                 .andExpect(jsonPath("$.phone", is("11977776666")))
                 .andExpect(jsonPath("$.nationalId", is("99988877766")));
     }
@@ -135,23 +161,13 @@ class TeacherControllerIntegrationTest {
         assertTrue(deleted.isEmpty(), "Teacher should have been deleted");
     }
 
+    // ----- CENÁRIOS DE ERRO / AUTORIZAÇÃO -----
+
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldReturn404WhenTeacherNotFound() throws Exception {
         mockMvc.perform(get("/teachers/{id}", 9999L))
                 .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void shouldReturn400WhenCreateWithInvalidBody() throws Exception {
-        TeacherDTO dto = new TeacherDTO(); // viola @NotBlank/@Pattern
-
-        mockMvc.perform(post("/teachers")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors").isArray());
     }
 
     @Test
@@ -169,7 +185,8 @@ class TeacherControllerIntegrationTest {
     }
 
     @Test
-    void shouldReturn401WhenNotAuthenticated() throws Exception {
+    void shouldReturn401WhenNotAuthenticatedOnProtectedEndpoint() throws Exception {
+        // delete continua protegido, deve exigir autenticação
         mockMvc.perform(delete("/teachers/{id}", teacherId))
                 .andExpect(status().isUnauthorized());
     }

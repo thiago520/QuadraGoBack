@@ -12,9 +12,11 @@ public class TeacherResponseDTO {
 
     private Long id;
     private String name;
+    private String email;
 
     public TeacherResponseDTO(Teacher teacher) {
         this.id = teacher.getId();
         this.name = teacher.getName();
+        this.email = teacher.getEmail();
     }
 }

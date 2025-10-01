@@ -9,11 +9,14 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class TeacherResumeDTO {
+
     private Long id;
     private String name;
+    private String email;
 
     public TeacherResumeDTO(Teacher teacher) {
         this.id = teacher.getId();
         this.name = teacher.getName();
+        this.email = teacher.getEmail();
     }
 }

@@ -75,6 +75,7 @@ class TraitControllerIntegrationTest {
         // 4) Recria cenário base
         Teacher teacher = Teacher.builder()
                 .name("Teacher Test")
+                .email("owner@exemplo.com")
                 .nationalId("12345678900")
                 .phone("11999999999")
                 .build();

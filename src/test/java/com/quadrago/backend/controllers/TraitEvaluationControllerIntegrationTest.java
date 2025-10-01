@@ -58,6 +58,7 @@ class TraitEvaluationControllerIntegrationTest {
         Teacher teacher = teacherRepository.save(
                 Teacher.builder()
                         .name("Teacher Test")
+                        .email("owner@exemplo.com")
                         .nationalId("11122233344")
                         .phone("11999990000")
                         .build()
