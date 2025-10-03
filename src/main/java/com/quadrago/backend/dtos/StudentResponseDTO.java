@@ -1,9 +1,8 @@
 package com.quadrago.backend.dtos;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.quadrago.backend.models.Student;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 import java.util.Set;
@@ -12,6 +11,9 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class StudentResponseDTO {
 
     private Long id;
@@ -23,21 +25,23 @@ public class StudentResponseDTO {
     private Set<TeacherResumeDTO> teachers;
     private List<TraitEvaluationDTO> evaluations;
 
-    public StudentResponseDTO(Student student) {
-        this.id = student.getId();
-        this.name = student.getName();
-        this.nationalId = student.getNationalId();
-        this.email = student.getEmail();
-        this.phone = student.getPhone();
-
-        this.teachers = student.getTeachers() == null ? Set.of()
-                : student.getTeachers().stream()
-                .map(TeacherResumeDTO::new)
-                .collect(Collectors.toSet());
-
-        this.evaluations = student.getTraitEvaluations() == null ? List.of()
-                : student.getTraitEvaluations().stream()
-                .map(TraitEvaluationDTO::new) // assume existir construtor DTO(Student/TraitEvaluation)
-                .collect(Collectors.toList());
+    /** Factory seguro (nunca inclui password) */
+    public static StudentResponseDTO of(Student student) {
+        if (student == null) return null;
+        return StudentResponseDTO.builder()
+                .id(student.getId())
+                .name(student.getName())
+                .nationalId(student.getNationalId())
+                .email(student.getEmail())
+                .phone(student.getPhone())
+                .teachers(student.getTeachers() == null ? Set.of()
+                        : student.getTeachers().stream()
+                        .map(TeacherResumeDTO::of)      // <<< usa o factory, não o construtor
+                        .collect(Collectors.toSet()))
+                .evaluations(student.getTraitEvaluations() == null ? List.of()
+                        : student.getTraitEvaluations().stream()
+                        .map(TraitEvaluationDTO::new)   // supondo existir este construtor
+                        .collect(Collectors.toList()))
+                .build();
     }
 }

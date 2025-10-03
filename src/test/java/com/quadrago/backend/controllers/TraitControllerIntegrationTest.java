@@ -76,6 +76,7 @@ class TraitControllerIntegrationTest {
         Teacher teacher = Teacher.builder()
                 .name("Teacher Test")
                 .email("owner@exemplo.com")
+                .password("hash")
                 .nationalId("12345678900")
                 .phone("11999999999")
                 .build();

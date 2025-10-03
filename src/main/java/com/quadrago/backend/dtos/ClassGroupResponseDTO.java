@@ -31,12 +31,14 @@ public class ClassGroupResponseDTO {
         this.id = classGroup.getId();
         this.name = classGroup.getName();
         this.level = classGroup.getLevel();
-        this.teacher = new TeacherResumeDTO(classGroup.getTeacher());
-        this.students = classGroup.getStudents().stream()
-                .map(StudentResumeDTO::new)
-                .collect(Collectors.toSet());
-        this.schedules = classGroup.getSchedules();
+        this.teacher = TeacherResumeDTO.of(classGroup.getTeacher());
 
+        this.students = classGroup.getStudents() == null ? Set.of()
+                : classGroup.getStudents().stream()
+                .map(StudentResumeDTO::of)   // << usar factory, não construtor
+                .collect(Collectors.toSet());
+
+        this.schedules = classGroup.getSchedules();
         this.computedLevel = computeLevel(classGroup);
     }
 
@@ -46,23 +48,20 @@ public class ClassGroupResponseDTO {
             return Level.BEGINNER;
         }
 
-        // Gather all scores from all students' trait evaluations
         List<Integer> allScores = students.stream()
                 .flatMap(st -> st.getTraitEvaluations().stream())
-                .map(te -> te.getScore() != null ? te.getScore() : 0) // uses 'score' (refactor from 'nota')
+                .map(te -> te.getScore() != null ? te.getScore() : 0)
                 .toList();
 
-        if (allScores.isEmpty()) {
-            return Level.BEGINNER;
-        }
+        if (allScores.isEmpty()) return Level.BEGINNER;
 
         double average = allScores.stream()
                 .mapToInt(Integer::intValue)
                 .average()
                 .orElse(0.0);
 
-        if (average <= 3)  return Level.BEGINNER;
-        if (average <= 7)  return Level.INTERMEDIATE; // keep current enum value
+        if (average <= 3) return Level.BEGINNER;
+        if (average <= 7) return Level.INTERMEDIATE;
         return Level.ADVANCED;
     }
 }

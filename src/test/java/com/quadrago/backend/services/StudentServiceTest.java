@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.*;
 
@@ -27,13 +28,24 @@ class StudentServiceTest {
     @Mock
     private TeacherRepository teacherRepository;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private StudentService studentService;
 
     @Test
     void shouldCreateStudent() {
         Set<Long> teacherIds = Set.of(1L);
-        StudentDTO dto = new StudentDTO("Joao", "12345678901", "joao@email.com", "9999999999", teacherIds);
+
+        StudentDTO dto = StudentDTO.builder()
+                .name("Joao")
+                .nationalId("12345678901")
+                .email("joao@email.com")
+                .password("SenhaForte123")
+                .phone("9999999999")
+                .teacherIds(teacherIds)
+                .build();
 
         // uniqueness validations
         when(studentRepository.existsByNationalId("12345678901")).thenReturn(false);
@@ -41,12 +53,16 @@ class StudentServiceTest {
 
         when(teacherRepository.findAllById(teacherIds)).thenReturn(new ArrayList<>());
 
+        // encode password
+        when(passwordEncoder.encode("SenhaForte123")).thenReturn("hash");
+
         Student saved = Student.builder()
                 .id(1L)
-                .name(dto.getName())
-                .nationalId(dto.getNationalId())
-                .email(dto.getEmail())
-                .phone(dto.getPhone())
+                .name("Joao")
+                .nationalId("12345678901")
+                .email("joao@email.com")
+                .password("hash")
+                .phone("9999999999")
                 .teachers(new HashSet<>())
                 .build();
 
@@ -57,13 +73,17 @@ class StudentServiceTest {
         assertNotNull(result);
         assertEquals("Joao", result.getName());
         assertEquals("12345678901", result.getNationalId());
+        verify(passwordEncoder).encode("SenhaForte123");
+        verify(studentRepository).save(any(Student.class));
     }
 
     @Test
     void shouldListStudents() {
         List<Student> students = List.of(
-                Student.builder().id(1L).name("A").nationalId("11111111111").email("a@email.com").phone("9999999999").teachers(new HashSet<>()).build(),
-                Student.builder().id(2L).name("B").nationalId("22222222222").email("b@email.com").phone("8888888888").teachers(new HashSet<>()).build()
+                Student.builder().id(1L).name("A").nationalId("11111111111").email("a@email.com")
+                        .password("hash").phone("9999999999").teachers(new HashSet<>()).build(),
+                Student.builder().id(2L).name("B").nationalId("22222222222").email("b@email.com")
+                        .password("hash").phone("8888888888").teachers(new HashSet<>()).build()
         );
 
         when(studentRepository.findAll()).thenReturn(students);
@@ -73,6 +93,7 @@ class StudentServiceTest {
         assertEquals(2, result.size());
         assertEquals("A", result.get(0).getName());
         assertEquals("B", result.get(1).getName());
+        verify(studentRepository).findAll();
     }
 
     @Test
@@ -82,6 +103,7 @@ class StudentServiceTest {
                 .name("Joao")
                 .nationalId("12388888888")
                 .email("j@email.com")
+                .password("hash")
                 .phone("9999999999")
                 .teachers(new HashSet<>())
                 .build();
@@ -92,6 +114,7 @@ class StudentServiceTest {
 
         assertTrue(result.isPresent());
         assertEquals("Joao", result.get().getName());
+        verify(studentRepository).findById(1L);
     }
 
     @Test
@@ -101,12 +124,20 @@ class StudentServiceTest {
                 .name("Joao")
                 .nationalId("12333333333")
                 .email("j@email.com")
+                .password("hash")
                 .phone("9999999999")
                 .teachers(new HashSet<>())
                 .build();
 
         Set<Long> newTeacherIds = Set.of(2L);
-        StudentDTO dto = new StudentDTO("Novo Nome", "99999999999", "novo@email.com", "8888888888", newTeacherIds);
+        StudentDTO dto = StudentDTO.builder()
+                .name("Novo Nome")
+                .nationalId("99999999999")
+                .email("novo@email.com")
+                .password("NovaSenha123")
+                .phone("8888888888")
+                .teacherIds(newTeacherIds)
+                .build();
 
         when(studentRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(teacherRepository.findAllById(newTeacherIds)).thenReturn(new ArrayList<>());
@@ -114,6 +145,9 @@ class StudentServiceTest {
         // uniqueness checks for changed fields
         when(studentRepository.existsByNationalId("99999999999")).thenReturn(false);
         when(studentRepository.existsByEmail("novo@email.com")).thenReturn(false);
+
+        // encode new password
+        when(passwordEncoder.encode("NovaSenha123")).thenReturn("new-hash");
 
         when(studentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -123,6 +157,7 @@ class StudentServiceTest {
         assertEquals("Novo Nome", result.get().getName());
         assertEquals("99999999999", result.get().getNationalId());
         assertEquals("8888888888", result.get().getPhone());
+        verify(passwordEncoder).encode("NovaSenha123");
     }
 
     @Test
@@ -132,6 +167,7 @@ class StudentServiceTest {
                 .name("Joao")
                 .nationalId("12345678901")
                 .email("j@email.com")
+                .password("hash")
                 .phone("9990000000")
                 .teachers(new HashSet<>())
                 .build();
@@ -146,11 +182,20 @@ class StudentServiceTest {
 
     @Test
     void shouldCreateStudentWithTeachers() {
-        StudentDTO dto = new StudentDTO("Ana", "12345678900", "ana@email.com", "11988887777", Set.of(1L, 2L));
+        StudentDTO dto = StudentDTO.builder()
+                .name("Ana")
+                .nationalId("12345678900")
+                .email("ana@email.com")
+                .password("SenhaForte123")
+                .phone("11988887777")
+                .teacherIds(Set.of(1L, 2L))
+                .build();
 
         Teacher t1 = Teacher.builder()
                 .id(1L)
                 .name("Carlos")
+                .email("carlos@ex.com")
+                .password("hash")
                 .phone("11999999999")
                 .nationalId("12345678901")
                 .students(new HashSet<>())
@@ -159,6 +204,8 @@ class StudentServiceTest {
         Teacher t2 = Teacher.builder()
                 .id(2L)
                 .name("Roberto")
+                .email("roberto@ex.com")
+                .password("hash")
                 .phone("11998789999")
                 .nationalId("12348778901")
                 .students(new HashSet<>())
@@ -170,12 +217,15 @@ class StudentServiceTest {
 
         when(teacherRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(t1, t2));
 
+        when(passwordEncoder.encode("SenhaForte123")).thenReturn("hash");
+
         Student saved = Student.builder()
                 .id(1L)
-                .name(dto.getName())
-                .nationalId(dto.getNationalId())
-                .email(dto.getEmail())
-                .phone(dto.getPhone())
+                .name("Ana")
+                .nationalId("12345678900")
+                .email("ana@email.com")
+                .password("hash")
+                .phone("11988887777")
                 .teachers(Set.of(t1, t2))
                 .build();
 
@@ -186,6 +236,7 @@ class StudentServiceTest {
         assertEquals("Ana", result.getName());
         assertEquals(2, result.getTeachers().size());
         verify(teacherRepository).findAllById(dto.getTeacherIds());
+        verify(passwordEncoder).encode("SenhaForte123");
         verify(studentRepository).save(any(Student.class));
     }
 }

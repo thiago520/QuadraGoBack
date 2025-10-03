@@ -13,12 +13,11 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,7 +32,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    // Role constants (Spring expects authorities like ROLE_ADMIN; hasRole("ADMIN") checks for that)
+    // Spring interpreta hasRole("ADMIN") como "ROLE_ADMIN"
     private static final String ADMIN   = "ADMIN";
     private static final String TEACHER = "TEACHER";
     private static final String STUDENT = "STUDENT";
@@ -43,70 +42,73 @@ public class SecurityConfig {
         log.info("Building SecurityFilterChain (stateless, JWT + Basic for Admin endpoints).");
 
         return http
-                // Stateless API + CSRF off
+                // API stateless + CSRF off
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Exception handling with logging
+                // Tratamento de exceções com logs
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(loggingAuthEntryPoint())
                         .accessDeniedHandler(loggingAccessDeniedHandler())
                 )
 
-                // Authorization rules
+                // Autorização
                 .authorizeHttpRequests(auth -> auth
-                        // --- PUBLIC ---
+                        // --- PÚBLICO ---
                         .requestMatchers("/", "/login", "/logout", "/auth/**", "/assets/**").permitAll()
-                        // actuator (exponha com cuidado em prod)
+                        // Exponha com cuidado em produção
                         .requestMatchers("/actuator/**").permitAll()
 
-                        // >>> TEACHER SIGN-UP (público) <<<
+                        // >>> PÚBLICO: criação de professor <<<
+                        // importante: matcher específico ANTES dos matchers protegidos
                         .requestMatchers(HttpMethod.POST, "/teachers").permitAll()
+                        // se houver context-path (ex.: /api), acrescente também:
+                        // .requestMatchers(HttpMethod.POST, "/api/teachers").permitAll()
 
-                        // --- SPRING BOOT ADMIN (requires auth; Basic enabled below) ---
+                        // PÚBLICO: listagem de planos de um professor
+                        .requestMatchers(HttpMethod.GET, "/teachers/*/plans/**").permitAll()
+                        // .requestMatchers(HttpMethod.GET, "/api/teachers/*/plans/**").permitAll() // com context-path
+
+                        // --- ÁREAS QUE EXIGEM AUTH (mantém boot admin compat) ---
                         .requestMatchers("/instances/**", "/applications/**").authenticated()
 
                         // --- ADMIN ---
                         .requestMatchers("/admin/**").hasRole(ADMIN)
 
-                        // --- TEACHER DOMAIN (demais rotas protegidas) ---
+                        // --- DOMÍNIO TEACHER (demais rotas protegidas) ---
                         .requestMatchers("/teachers/**").hasAnyRole(TEACHER, ADMIN)
+                        // .requestMatchers("/api/teachers/**").hasAnyRole(TEACHER, ADMIN) // com context-path
+
+                        // --- OUTRAS ÁREAS ---
                         .requestMatchers("/class-groups/**").hasAnyRole(TEACHER, ADMIN)
                         .requestMatchers("/traits/**").hasRole(TEACHER)
-
-                        // --- TRAIT EVALUATIONS ---
                         .requestMatchers(HttpMethod.DELETE, "/trait-evaluations/**").hasRole(TEACHER)
                         .requestMatchers("/trait-evaluations/**").hasAnyRole(TEACHER, STUDENT)
-
-                        // --- STUDENTS ---
                         .requestMatchers("/students/**").hasAnyRole(TEACHER, ADMIN, STUDENT)
 
-                        // Any other endpoint must be authenticated
+                        // Qualquer outra rota requer autenticação
                         .anyRequest().authenticated()
                 )
 
-                // Basic Authentication (kept for Spring Boot Admin compatibility)
+                // Basic Authentication (para Admin/actuator, etc.)
                 .httpBasic(Customizer.withDefaults())
 
-                // JWT filter (runs before UsernamePasswordAuthenticationFilter)
+                // Filtro JWT (antes do UsernamePasswordAuthenticationFilter)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
                 .build();
     }
 
-    /** Logs 401s with request path and message */
+    /** Logs 401 com path e mensagem */
     @Bean
     public AuthenticationEntryPoint loggingAuthEntryPoint() {
-        return new AuthenticationEntryPoint() {
-            @Override
-            public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException {
-                log.warn("401 Unauthorized - path='{}', message='{}'", request.getRequestURI(), authException.getMessage());
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
-            }
+        return (HttpServletRequest request, HttpServletResponse response, org.springframework.security.core.AuthenticationException authException) -> {
+            log.warn("401 Unauthorized - path='{}', message='{}'", request.getRequestURI(), authException.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
         };
     }
 
-    /** Logs 403s with request path and user (if any) */
+    /** Logs 403 com path e usuário (se houver) */
     @Bean
     public AccessDeniedHandler loggingAccessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
@@ -118,7 +120,6 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // default strength 10; tune if needed
         return new BCryptPasswordEncoder();
     }
 

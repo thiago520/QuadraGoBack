@@ -23,8 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -35,17 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestSecurityConfig.class) // PasswordEncoder + SecurityFilterChain + @EnableMethodSecurity
 class StudentControllerIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private StudentRepository studentRepository;
-
-    @Autowired
-    private TeacherRepository teacherRepository;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private StudentRepository studentRepository;
+    @Autowired private TeacherRepository teacherRepository;
 
     // --- helper para e-mails únicos (evita violação do índice único de email) ---
     private static final AtomicLong EMAIL_SEQ = new AtomicLong(1);
@@ -69,18 +61,20 @@ class StudentControllerIntegrationTest {
                 Teacher.builder()
                         .name("Prof. Test")
                         .email(uniqueEmail("prof.a@exemplo.com"))
+                        .password("hash") // campo obrigatório em User
                         .phone("11999999999")
                         .nationalId("12345678901")
                         .build()
         );
 
-        StudentDTO dto = new StudentDTO(
-                "Joao",
-                "12345678901",
-                "joao@email.com",
-                "11999999999",
-                Set.of(teacher.getId())
-        );
+        StudentDTO dto = StudentDTO.builder()
+                .name("Joao")
+                .nationalId("12345678901")
+                .email("joao@email.com")
+                .password("SenhaForte123")
+                .phone("11999999999")
+                .teacherIds(Set.of(teacher.getId()))
+                .build();
 
         mockMvc.perform(post("/students")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -97,6 +91,7 @@ class StudentControllerIntegrationTest {
                 Teacher.builder()
                         .name("Prof. Test")
                         .email(uniqueEmail("prof.a@exemplo.com"))
+                        .password("hash")
                         .phone("11999999999")
                         .nationalId("12345678901")
                         .build()
@@ -106,19 +101,21 @@ class StudentControllerIntegrationTest {
                 Student.builder()
                         .name("Carlos")
                         .email("carlos@email.com")
+                        .password("hash")
                         .nationalId("88888888888")
                         .phone("7777777777")
                         .teachers(Set.of())
                         .build()
         );
 
-        StudentDTO dto = new StudentDTO(
-                "Carlos Updated",
-                "88888888888",
-                "carlos@email.com",
-                "7777777777",
-                Set.of(teacher.getId())
-        );
+        StudentDTO dto = StudentDTO.builder()
+                .name("Carlos Updated")
+                .nationalId("88888888888")
+                .email("carlos@email.com")
+                .password("NovaSenhaSegura123")
+                .phone("7777777777")
+                .teacherIds(Set.of(teacher.getId()))
+                .build();
 
         mockMvc.perform(put("/students/" + student.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -135,6 +132,7 @@ class StudentControllerIntegrationTest {
                 Student.builder()
                         .name("Carlos")
                         .email("carlos@email.com")
+                        .password("hash")
                         .nationalId("88888888888")
                         .phone("7777777777")
                         .teachers(Set.of())
@@ -154,6 +152,7 @@ class StudentControllerIntegrationTest {
                 Student.builder()
                         .name("Carlos")
                         .email("carlos@email.com")
+                        .password("hash")
                         .nationalId("88888888888")
                         .phone("7777777777")
                         .teachers(Set.of())
@@ -178,6 +177,7 @@ class StudentControllerIntegrationTest {
                 Teacher.builder()
                         .name("Carlos Silva")
                         .email(uniqueEmail("prof.a@exemplo.com"))
+                        .password("hash")
                         .phone("11999999999")
                         .nationalId("12345678901")
                         .build()
@@ -186,18 +186,20 @@ class StudentControllerIntegrationTest {
                 Teacher.builder()
                         .name("Maria Lima")
                         .email(uniqueEmail("prof.b@exemplo.com"))
+                        .password("hash")
                         .phone("21988888888")
                         .nationalId("09876543210")
                         .build()
         );
 
-        StudentDTO dto = new StudentDTO(
-                "Joao",
-                "11122233344",
-                "joao@email.com",
-                "11977778888",
-                Set.of(t1.getId(), t2.getId())
-        );
+        StudentDTO dto = StudentDTO.builder()
+                .name("Joao")
+                .nationalId("11122233344")
+                .email("joao@email.com")
+                .password("SenhaForte123")
+                .phone("11977778888")
+                .teacherIds(Set.of(t1.getId(), t2.getId()))
+                .build();
 
         mockMvc.perform(post("/students")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -214,6 +216,7 @@ class StudentControllerIntegrationTest {
                 Teacher.builder()
                         .name("Carlos")
                         .email(uniqueEmail("prof.a@exemplo.com"))
+                        .password("hash")
                         .phone("11999999999")
                         .nationalId("11111111111")
                         .build()
@@ -222,6 +225,7 @@ class StudentControllerIntegrationTest {
                 Teacher.builder()
                         .name("Marcia")
                         .email(uniqueEmail("prof.b@exemplo.com"))
+                        .password("hash")
                         .phone("21988888888")
                         .nationalId("22222222222")
                         .build()
@@ -230,6 +234,7 @@ class StudentControllerIntegrationTest {
                 Teacher.builder()
                         .name("Joana")
                         .email(uniqueEmail("prof.c@exemplo.com"))
+                        .password("hash")
                         .phone("21988887777")
                         .nationalId("33333333333")
                         .build()
@@ -240,18 +245,20 @@ class StudentControllerIntegrationTest {
                         .name("Lucia")
                         .nationalId("99988877766")
                         .email("lucia@email.com")
+                        .password("hash")
                         .phone("11977778888")
                         .teachers(Set.of(t1, t2))
                         .build()
         );
 
-        StudentDTO updated = new StudentDTO(
-                "Lucia Updated",
-                "99988877766",
-                "lucia_new@email.com",
-                "21999999999",
-                Set.of(t3.getId())
-        );
+        StudentDTO updated = StudentDTO.builder()
+                .name("Lucia Updated")
+                .nationalId("99988877766")
+                .email("lucia_new@email.com")
+                .password("SenhaUltraSegura456")
+                .phone("21999999999")
+                .teacherIds(Set.of(t3.getId()))
+                .build();
 
         mockMvc.perform(put("/students/" + student.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -262,11 +269,13 @@ class StudentControllerIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void shouldListStudentsWithTeachers() throws Exception {
         Teacher t1 = teacherRepository.save(
                 Teacher.builder()
                         .name("Carlos")
                         .email(uniqueEmail("prof.list@exemplo.com"))
+                        .password("hash")
                         .phone("11999999999")
                         .nationalId("12312312312")
                         .build()
@@ -277,6 +286,7 @@ class StudentControllerIntegrationTest {
                         .name("Julia")
                         .nationalId("55566677788")
                         .email("julia@email.com")
+                        .password("hash")
                         .phone("11988887777")
                         .teachers(Set.of(t1))
                         .build()
@@ -284,13 +294,15 @@ class StudentControllerIntegrationTest {
 
         studentRepository.flush();
 
-        mockMvc.perform(get("/students")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+        mockMvc.perform(get("/students").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].name").value("Julia"))
+                // professores (sem depender do índice)
                 .andExpect(jsonPath("$[0].teachers", hasSize(1)))
-                .andExpect(jsonPath("$[0].teachers[0].id").value(t1.getId().intValue()))
-                .andExpect(jsonPath("$[0].teachers[0].name").value("Carlos"));
+                .andExpect(jsonPath("$[0].teachers[*].id", hasItem(t1.getId().intValue())))
+                .andExpect(jsonPath("$[0].teachers[*].name", hasItem("Carlos")));
     }
+
 }

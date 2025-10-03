@@ -3,6 +3,7 @@ package com.quadrago.backend.dtos;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Getter
@@ -18,6 +19,10 @@ public class TeacherDTO {
     @NotBlank(message = "email is required")
     @Email(message = "email must be a valid address")
     private String email;
+
+    @NotBlank(message = "password is required")
+    @Size(min = 8, max = 120, message = "password must be between 8 and 120 characters")
+    private String password;
 
     @NotBlank(message = "phone is required")
     @Pattern(regexp = "\\d{10,11}", message = "phone must have 10 or 11 numeric digits")

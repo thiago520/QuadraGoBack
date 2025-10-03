@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +25,9 @@ public class TeacherServiceTest {
     @Mock
     private TeacherRepository repository;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private TeacherService service;
 
@@ -33,6 +37,7 @@ public class TeacherServiceTest {
         TeacherDTO dto = TeacherDTO.builder()
                 .name("Carlos")
                 .email("CARLOS.SILVA@EXEMPLO.COM")
+                .password("SenhaForte123")
                 .phone("(11) 99999-9999")
                 .nationalId("123.456.789-01")
                 .build();
@@ -41,10 +46,14 @@ public class TeacherServiceTest {
         when(repository.existsByEmail("carlos.silva@exemplo.com")).thenReturn(false);
         when(repository.existsByNationalId("12345678901")).thenReturn(false);
 
+        // hash da senha
+        when(passwordEncoder.encode("SenhaForte123")).thenReturn("hash");
+
         Teacher saved = Teacher.builder()
                 .id(1L)
                 .name("Carlos")
                 .email("carlos.silva@exemplo.com")
+                .password("hash")
                 .phone("11999999999")
                 .nationalId("12345678901")
                 .build();
@@ -61,6 +70,7 @@ public class TeacherServiceTest {
 
         verify(repository).existsByEmail("carlos.silva@exemplo.com");
         verify(repository).existsByNationalId("12345678901");
+        verify(passwordEncoder).encode("SenhaForte123");
         verify(repository).save(any(Teacher.class));
     }
 
@@ -69,6 +79,7 @@ public class TeacherServiceTest {
         TeacherDTO dto = TeacherDTO.builder()
                 .name("Carlos")
                 .email("carlos@exemplo.com")
+                .password("SenhaForte123")
                 .phone("11999999999")
                 .nationalId("12345678901")
                 .build();
@@ -80,6 +91,7 @@ public class TeacherServiceTest {
 
         verify(repository).existsByEmail("carlos@exemplo.com");
         verify(repository, never()).save(any());
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
@@ -87,6 +99,7 @@ public class TeacherServiceTest {
         TeacherDTO dto = TeacherDTO.builder()
                 .name("Carlos")
                 .email("carlos@exemplo.com")
+                .password("SenhaForte123")
                 .phone("11999999999")
                 .nationalId("12345678901")
                 .build();
@@ -100,6 +113,7 @@ public class TeacherServiceTest {
         verify(repository).existsByEmail("carlos@exemplo.com");
         verify(repository).existsByNationalId("12345678901");
         verify(repository, never()).save(any());
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
@@ -108,6 +122,7 @@ public class TeacherServiceTest {
                 .id(1L)
                 .name("Carlos")
                 .email("carlos@exemplo.com")
+                .password("hash")
                 .phone("111")
                 .nationalId("123")
                 .build();
@@ -116,6 +131,7 @@ public class TeacherServiceTest {
                 .id(2L)
                 .name("Ana")
                 .email("ana@exemplo.com")
+                .password("hash")
                 .phone("222")
                 .nationalId("456")
                 .build();
@@ -136,6 +152,7 @@ public class TeacherServiceTest {
                 .id(1L)
                 .name("Carlos")
                 .email("carlos@exemplo.com")
+                .password("hash")
                 .phone("111")
                 .nationalId("123")
                 .build();
@@ -156,6 +173,7 @@ public class TeacherServiceTest {
                 .id(1L)
                 .name("Carlos")
                 .email("carlos@exemplo.com")
+                .password("hash")
                 .phone("111")
                 .nationalId("12345678901")
                 .build();
@@ -163,6 +181,7 @@ public class TeacherServiceTest {
         TeacherDTO dto = TeacherDTO.builder()
                 .name("Carlos Updated")
                 .email("CARLOS.UPDATED@EXEMPLO.COM")
+                .password("NovaSenha123") // opcional; se vier, service atualiza e hasheia
                 .phone("11 97777-6666")
                 .nationalId("999.888.777-66")
                 .build();
@@ -172,6 +191,9 @@ public class TeacherServiceTest {
         when(repository.existsByNationalId("99988877766")).thenReturn(false);
         when(repository.save(any(Teacher.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        // hash da nova senha
+        when(passwordEncoder.encode("NovaSenha123")).thenReturn("new-hash");
+
         Optional<Teacher> result = service.update(1L, dto);
 
         assertTrue(result.isPresent());
@@ -180,10 +202,10 @@ public class TeacherServiceTest {
         assertThat(result.get().getPhone()).isEqualTo("11977776666");
         assertThat(result.get().getNationalId()).isEqualTo("99988877766");
 
-        // pode ser chamado mais de uma vez por causa das validações
         verify(repository, atLeastOnce()).findById(1L);
         verify(repository).existsByEmail("carlos.updated@exemplo.com");
         verify(repository).existsByNationalId("99988877766");
+        verify(passwordEncoder).encode("NovaSenha123");
         verify(repository).save(any(Teacher.class));
     }
 
@@ -193,6 +215,7 @@ public class TeacherServiceTest {
                 .id(1L)
                 .name("Carlos")
                 .email("carlos@exemplo.com")
+                .password("hash")
                 .phone("111")
                 .nationalId("12345678901")
                 .build();
@@ -219,6 +242,7 @@ public class TeacherServiceTest {
         // não deve chamar existsByEmail/existsByNationalId
         verify(repository, never()).existsByEmail(anyString());
         verify(repository, never()).existsByNationalId(anyString());
+        verify(passwordEncoder, never()).encode(anyString());
         verify(repository).save(any(Teacher.class));
     }
 
@@ -228,6 +252,7 @@ public class TeacherServiceTest {
                 .id(1L)
                 .name("Carlos")
                 .email("carlos@exemplo.com")
+                .password("hash")
                 .phone("111")
                 .nationalId("12345678901")
                 .build();
@@ -247,6 +272,7 @@ public class TeacherServiceTest {
 
         verify(repository, atLeastOnce()).findById(1L);
         verify(repository).existsByEmail("duplicado@exemplo.com");
+        verify(passwordEncoder, never()).encode(anyString());
         verify(repository, never()).save(any());
     }
 
@@ -256,6 +282,7 @@ public class TeacherServiceTest {
                 .id(1L)
                 .name("Carlos")
                 .email("carlos@exemplo.com")
+                .password("hash")
                 .phone("111")
                 .nationalId("12345678901")
                 .build();
@@ -276,6 +303,7 @@ public class TeacherServiceTest {
         // pode ser chamado mais de uma vez por causa da validação de unicidade
         verify(repository, atLeastOnce()).findById(1L);
         verify(repository).existsByNationalId("11122233344");
+        verify(passwordEncoder, never()).encode(anyString());
         verify(repository, never()).save(any());
     }
 
@@ -287,6 +315,7 @@ public class TeacherServiceTest {
                 .id(id)
                 .name("Name")
                 .email("name@exemplo.com")
+                .password("hash")
                 .phone("123")
                 .nationalId("000")
                 .build();

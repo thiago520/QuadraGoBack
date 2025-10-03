@@ -5,11 +5,13 @@ import com.quadrago.backend.models.Teacher;
 import com.quadrago.backend.repositories.TeacherRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -17,24 +19,35 @@ import java.util.Optional;
 public class TeacherService {
 
     private final TeacherRepository repository;
+    private final PasswordEncoder passwordEncoder;
+    // Se houver RoleRepository, injete-o para buscar a role do banco:
+    // private final RoleRepository roleRepository;
 
     @Transactional
     public Teacher create(TeacherDTO dto) {
-        // Normaliza entradas
+        // Normalização
         String name       = safeTrim(dto.getName());
         String email      = normalizeEmail(dto.getEmail());
         String phone      = normalizeDigits(dto.getPhone());
         String nationalId = normalizeDigits(dto.getNationalId());
+        String rawPass    = dto.getPassword();
 
-        // Regras de unicidade
+        // Unicidade
         validateEmailUniqueness(email, Optional.empty());
         validateNationalIdUniqueness(nationalId, Optional.empty());
 
+        // Hash da senha
+        String passwordHash = passwordEncoder.encode(rawPass);
+
+        // Monta Teacher (subclasse de User)
         Teacher t = Teacher.builder()
                 .name(name)
                 .email(email)
+                .password(passwordHash)
                 .phone(phone)
                 .nationalId(nationalId)
+                // .roles(Set.of(roleRepository.findByName("ROLE_TEACHER"))) // se usar RoleRepository
+                .roles(Set.of()) // substitua pela linha acima se persistir roles por tabela
                 .build();
 
         Teacher saved = repository.save(t);
@@ -55,18 +68,16 @@ public class TeacherService {
 
     @Transactional
     public Optional<Teacher> update(Long id, TeacherDTO dto) {
-        // Normaliza entradas antes de comparar/persistir
         String newName       = safeTrim(dto.getName());
         String newEmail      = normalizeEmail(dto.getEmail());
         String newPhone      = normalizeDigits(dto.getPhone());
         String newNationalId = normalizeDigits(dto.getNationalId());
+        String newPassword   = dto.getPassword(); // se vier nulo/blank, não atualiza
 
         return repository.findById(id).map(existing -> {
-            // Se e-mail mudou, valida unicidade
             if (!Objects.equals(existing.getEmail(), newEmail)) {
                 validateEmailUniqueness(newEmail, Optional.of(id));
             }
-            // Se nationalId mudou, valida unicidade
             if (!Objects.equals(existing.getNationalId(), newNationalId)) {
                 validateNationalIdUniqueness(newNationalId, Optional.of(id));
             }
@@ -75,6 +86,10 @@ public class TeacherService {
             existing.setEmail(newEmail);
             existing.setPhone(newPhone);
             existing.setNationalId(newNationalId);
+
+            if (newPassword != null && !newPassword.isBlank()) {
+                existing.setPassword(passwordEncoder.encode(newPassword));
+            }
 
             Teacher updated = repository.save(existing);
             log.info("Teacher updated: id={}, name='{}', email='{}'", updated.getId(), updated.getName(), updated.getEmail());
@@ -107,8 +122,6 @@ public class TeacherService {
                     .orElse(null);
             if (Objects.equals(current, email)) return;
         }
-
-        log.warn("email already in use: {}", email);
         throw new IllegalArgumentException("email already in use");
     }
 
@@ -125,20 +138,15 @@ public class TeacherService {
                     .orElse(null);
             if (Objects.equals(current, nationalId)) return;
         }
-
-        log.warn("nationalId already in use: {}", nationalId);
         throw new IllegalArgumentException("nationalId already in use");
     }
 
     private static String safeTrim(String s) {
         return s == null ? null : s.trim();
     }
-
     private static String normalizeEmail(String s) {
         return s == null ? null : s.trim().toLowerCase();
     }
-
-    /** Mantém somente dígitos (para phone e nationalId/CPF) */
     private static String normalizeDigits(String s) {
         if (s == null) return null;
         String digits = s.replaceAll("\\D", "");

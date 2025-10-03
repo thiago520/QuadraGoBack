@@ -62,10 +62,11 @@ class TeacherControllerIntegrationTest {
         teacherRepository.deleteAllInBatch();
         studentRepository.deleteAllInBatch();
 
-        // 4) Cenário base: teacher existente
+        // 4) Cenário base: teacher existente (agora com password obrigatório)
         Teacher t = Teacher.builder()
                 .name("Carlos Silva")
                 .email("carlos.silva@exemplo.com")
+                .password("hash") // obrigatório por herdar de User
                 .phone("11987654321")
                 .nationalId("12345678901")
                 .build();
@@ -102,6 +103,7 @@ class TeacherControllerIntegrationTest {
         TeacherDTO dto = TeacherDTO.builder()
                 .name("Joao da Silva")
                 .email("joao.silva@exemplo.com")
+                .password("SenhaForte123") // agora obrigatório no DTO
                 .phone("11988887777")
                 .nationalId("98765432100")
                 .build();
@@ -119,7 +121,7 @@ class TeacherControllerIntegrationTest {
 
     @Test
     void shouldReturn400WhenCreateWithInvalidBody_Public() throws Exception {
-        // DTO vazio viola @NotBlank/@Email/@Pattern
+        // DTO vazio viola @NotBlank/@Email/@Pattern/@Size do password
         TeacherDTO invalid = new TeacherDTO();
 
         mockMvc.perform(post("/teachers")
@@ -137,6 +139,7 @@ class TeacherControllerIntegrationTest {
         TeacherDTO dto = TeacherDTO.builder()
                 .name("Updated Name")
                 .email("carlos.updated@exemplo.com")
+                .password("NovaSenhaForte123") // manter consistente com DTO que exige password
                 .phone("11977776666")
                 .nationalId("99988877766")
                 .build();
