@@ -4,29 +4,15 @@ import com.quadrago.backend.enums.RoleName;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity
-@Table(
-        name = "roles",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_roles_name", columnNames = "name")
-        }
-)
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-@ToString
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Entity @Table(name = "roles")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Role {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Short id;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @EqualsAndHashCode.Include
-    private Long id;
-
-    /** Role identifier (e.g., ADMIN, TEACHER, STUDENT) */
     @Enumerated(EnumType.STRING)
-    @Column(name = "name", nullable = false, length = 50)
+    @Column(nullable = false, unique = true)
     private RoleName name;
+
+    private String description;
 }

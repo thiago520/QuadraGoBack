@@ -4,7 +4,6 @@ import com.quadrago.backend.models.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
@@ -19,21 +18,23 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class JwtService {
 
     @Value("${jwt.secret}")
-    private String jwtSecret;         // texto (ou base64) da chave
+    private String jwtSecret;  // texto (ou Base64) da chave
 
-    @Value("${jwt.expiration}")
-    private long jwtExpirationMillis; // em milissegundos
+    // Tempos padrão (15m access, 30d refresh) — pode ajustar no application.properties
+    @Value("${jwt.access.expiration:900000}")
+    private long accessTtlMs;
+
+    @Value("${jwt.refresh.expiration:2592000000}")
+    private long refreshTtlMs;
 
     private SecretKey key;
 
-    /* ---------------------- init ---------------------- */
+    /* ---------------------- secret/key ---------------------- */
 
     private SecretKey buildKey(String secret) {
-        // Tenta interpretar como Base64; se falhar, usa bytes do texto
         try {
             byte[] decoded = Decoders.BASE64.decode(secret);
             if (decoded.length > 0) {
@@ -44,8 +45,7 @@ public class JwtService {
 
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
-            // HS256 requer 256 bits (32 bytes) para segurança adequada
-            log.warn("JWT secret is short ({} bytes). Consider a 256-bit (32+ bytes) secret or Base64 value.", bytes.length);
+            log.warn("JWT secret is short ({} bytes). Use 256-bit (>=32 bytes) or Base64.", bytes.length);
         } else {
             log.info("JWT secret loaded as raw text ({} bytes).", bytes.length);
         }
@@ -53,42 +53,60 @@ public class JwtService {
     }
 
     private SecretKey key() {
-        if (key == null) {
-            key = buildKey(jwtSecret);
-        }
+        if (key == null) key = buildKey(jwtSecret);
         return key;
     }
 
     /* -------------------- generation -------------------- */
 
+    /** ACCESS TOKEN (curta duração) */
+    public String generateAccessToken(UserDetails user) {
+        Map<String, Object> claims = baseClaims(user);
+        return buildToken(user.getUsername(), claims, accessTtlMs, "access");
+    }
+
+    /** REFRESH TOKEN (longa duração) */
+    public String generateRefreshToken(UserDetails user) {
+        Map<String, Object> claims = baseClaims(user); // pode ser vazio se preferir
+        return buildToken(user.getUsername(), claims, refreshTtlMs, "refresh");
+    }
+
+    /** Compatibilidade: usa access token por padrão. */
+    public String generateToken(UserDetails user) {
+        return generateAccessToken(user);
+    }
+
+    /** Compatibilidade: usa access token a partir da entidade User. */
     public String generateToken(User user) {
+        String username = user.getEmail().toLowerCase(Locale.ROOT);
         Set<String> roles = user.getRoles().stream()
-                .map(r -> r.getName().name())
+                .map(r -> "ROLE_" + r.getName().name())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", roles);
+        return buildToken(username, claims, accessTtlMs, "access");
+    }
+
+    private Map<String, Object> baseClaims(UserDetails user) {
+        Set<String> roles = user.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority) // ROLE_ADMIN, ROLE_TEACHER...
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("roles", roles);
-
-        return buildToken(user.getEmail(), claims, jwtExpirationMillis);
+        return claims;
     }
 
-    public String generateToken(UserDetails userDetails) {
-        Set<String> roles = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)        // e.g. ROLE_ADMIN
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("roles", roles);
-
-        return buildToken(userDetails.getUsername(), claims, jwtExpirationMillis);
-    }
-
-    private String buildToken(String subject, Map<String, Object> claims, long ttlMillis) {
+    private String buildToken(String subject, Map<String, Object> claims, long ttlMillis, String typ) {
         Instant now = Instant.now();
         Instant exp = now.plusMillis(ttlMillis);
 
+        // “typ” indica se é access ou refresh — usamos em isRefreshToken()
+        Map<String, Object> withTyp = new HashMap<>(claims == null ? Map.of() : claims);
+        withTyp.put("typ", typ);
+
         return Jwts.builder()
-                .setClaims(claims)
+                .setClaims(withTyp)
                 .setSubject(subject)
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(exp))
@@ -96,38 +114,42 @@ public class JwtService {
                 .compact();
     }
 
-    /* -------------------- parsing -------------------- */
+    /* -------------------- parsing/validation -------------------- */
 
     public String extractUsername(String token) {
         return extractAllClaims(token).getSubject();
-    }
-
-    /** Returns roles claim as a Set<String>. Accepts either List or comma-separated String (for compat). */
-    @SuppressWarnings("unchecked")
-    public Set<String> extractRoles(String token) {
-        Claims claims = extractAllClaims(token);
-        Object raw = claims.get("roles");
-        if (raw == null) return Set.of();
-        if (raw instanceof Collection<?> col) {
-            return col.stream().map(String::valueOf).collect(Collectors.toCollection(LinkedHashSet::new));
-        }
-        // fallback: "ADMIN,TEACHER"
-        return Arrays.stream(String.valueOf(raw).split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     public Date extractExpiration(String token) {
         return extractAllClaims(token).getExpiration();
     }
 
+    /** Retorna roles como Set<String> (mesmo formato gravado no claim, ex.: ROLE_ADMIN). */
+    @SuppressWarnings("unchecked")
+    public Set<String> extractRoles(String token) {
+        Object raw = extractAllClaims(token).get("roles");
+        if (raw == null) return Set.of();
+        if (raw instanceof Collection<?> col) {
+            return col.stream().map(String::valueOf).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+        return Arrays.stream(String.valueOf(raw).split(","))
+                .map(String::trim).filter(s -> !s.isEmpty())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /** true se o claim "typ" == "refresh" */
+    public boolean isRefreshToken(String token) {
+        Object typ = extractAllClaims(token).get("typ");
+        return typ != null && "refresh".equalsIgnoreCase(String.valueOf(typ));
+    }
+
     public boolean isTokenValid(String token, UserDetails userDetails) {
         try {
             final String username = extractUsername(token);
-            return username.equalsIgnoreCase(userDetails.getUsername()) && !isTokenExpired(token);
+            return username != null
+                    && username.equalsIgnoreCase(userDetails.getUsername())
+                    && !isTokenExpired(token);
         } catch (JwtException | IllegalArgumentException e) {
-            // assinatura inválida, malformado, expirado (capturado em isTokenExpired), etc.
             log.warn("JWT validation failed: {}", e.getMessage());
             return false;
         }
@@ -142,7 +164,6 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
-        // Lança JwtException para tokens inválidos
         return Jwts.parserBuilder()
                 .setSigningKey(key())
                 .build()

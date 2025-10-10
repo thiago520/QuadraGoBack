@@ -1,11 +1,7 @@
 package com.quadrago.backend.filters;
 
-import com.quadrago.backend.services.CustomUserDetailsService;
 import com.quadrago.backend.services.JwtService;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.quadrago.backend.services.TokenBlacklistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -14,8 +10,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Slf4j
@@ -25,6 +26,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
+
+    private static final AntPathMatcher PATH = new AntPathMatcher();
+
+    /** Helper para casar método + padrão (sem context-path; usamos getServletPath()). */
+    private boolean matches(HttpServletRequest req, String httpMethod, String pattern) {
+        return (httpMethod == null || httpMethod.equalsIgnoreCase(req.getMethod()))
+                && PATH.match(pattern, req.getServletPath());
+    }
 
     /**
      * Use getServletPath() para casar caminhos SEM o context-path (ex.: /api).
@@ -32,29 +42,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        final String servletPath = request.getServletPath(); // path dentro do contexto
-        final String method = request.getMethod();
-
-        // Endpoints públicos e compatibilidade com Spring Boot Admin
-        if (servletPath.startsWith("/auth")
-                || servletPath.startsWith("/actuator")
-                || "/".equals(servletPath)
-                || servletPath.startsWith("/assets")
-                || servletPath.startsWith("/login")
-                || servletPath.startsWith("/logout")
-                || servletPath.startsWith("/instances")
-                || servletPath.startsWith("/applications")) {
+        // Endpoints sempre públicos
+        if (matches(request, null, "/")
+                || matches(request, null, "/auth/**")
+                || matches(request, null, "/assets/**")
+                || matches(request, null, "/login")
+                || matches(request, null, "/logout")) {
             return true;
         }
 
-        // >>> PÚBLICO: criação de professor (POST /teachers)
-        if ("POST".equalsIgnoreCase(method) && "/teachers".equals(servletPath)) {
+        // Spring Boot Admin (cliente)
+        if (matches(request, null, "/instances/**")
+                || matches(request, null, "/applications/**")) {
             return true;
         }
-        // Se sua app expõe como /api/teachers (via context-path + controller),
-        // não precisa tratar aqui pois getServletPath() já remove o context-path.
-        // Mas, se houver prefixos adicionais no Controller, adicione os matches equivalentes.
 
+        // Actuator: apenas health/info são públicos
+        if (matches(request, null, "/actuator/health/**")
+                || matches(request, null, "/actuator/info/**")) {
+            return true;
+        }
+
+        // Cadastro PF (público)
+        if (matches(request, "POST", "/users/person")) {
+            return true;
+        }
+
+        // Catálogo de professores (público)
+        if (matches(request, "GET", "/profiles/teacher/**")) {
+            return true;
+        }
+
+        // Demais rotas: não pular (deixa o filtro rodar)
         return false;
     }
 
@@ -79,6 +98,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String token = authHeader.substring(7);
 
         try {
+            // 1) Blacklist: se estiver, não autentica
+            if (tokenBlacklistService.isBlacklisted(token)) {
+                log.warn("Token na blacklist - path='{}'", request.getRequestURI());
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 2) Evita usar refresh token como access (exceto /auth/**, já pulado no shouldNotFilter)
+            if (jwtService.isRefreshToken(token)) {
+                log.warn("Refresh token apresentado em endpoint não autorizado para refresh. path='{}'", request.getRequestURI());
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 3) Fluxo normal de autenticação
             final String username = jwtService.extractUsername(token);
             final Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -96,7 +130,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     log.debug("JWT authenticated: user='{}', path='{}'", username, request.getRequestURI());
                 } else {
-                    // Token inválido -> apenas loga e segue SEM autenticar (não lança exceção!)
                     log.warn("Invalid JWT token for user='{}', path='{}'", username, request.getRequestURI());
                 }
             }

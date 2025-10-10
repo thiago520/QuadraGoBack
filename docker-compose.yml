@@ -1,57 +1,79 @@
-# docker-compose.yml (CORRIGIDO)
+# ========== PERFIL ==========
+# Ajuste conforme seu ambiente (opcional)
+# spring.profiles.active=dev
 
-services:
-  postgres:
-    image: postgres:15
-    container_name: quadrago-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: quadrago
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  # NOVO SERVIÇO: Spring Boot Admin Server
-  admin-server:
-    image: caoxuyang/spring-boot-admin-server:k8s-api-server-1
-    container_name: quadrago-admin-server
-    restart: unless-stopped
-    ports:
-      # Expõe o painel do Admin na porta 8081 do seu computador
-      - "8081:8080"
-    environment:
-      # Define as credenciais que o servidor Admin vai usar
-      SPRING_SECURITY_USER_NAME: admin
-      SPRING_SECURITY_USER_PASSWORD: admin
-
-  adminer:
-    image: adminer
-    container_name: quadrago-adminer
-    restart: unless-stopped
-    ports:
-      # Movido para a porta 8082 para não conflitar com o admin-server
-      - "8082:8080"
-
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: quadrago-back
-    restart: unless-stopped
-    ports:
-      # Sua API continua na porta 8080
-      - "8080:8080"
-    depends_on:
-      - postgres
-      - admin-server # Adicionado dependência do admin-server
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quadrago
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      JAVA_OPTS: -Xms256m -Xmx512m
-
-volumes:
-  pgdata:
+# ========== BANCO DE DADOS ==========
+spring.datasource.url=jdbc:postgresql://postgres:5432/quadrago
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.datasource.driver-class-name=org.postgresql.Driver
+  
+  # HikariCP (recomendado ajustar para sua infra)
+spring.datasource.hikari.pool-name=Hikari
+spring.datasource.hikari.maximum-pool-size=15
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.connection-timeout=20000
+spring.datasource.hikari.idle-timeout=600000
+spring.datasource.hikari.max-lifetime=1800000
+  
+  # ========== JPA ==========
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+  
+  # Evita "Open Session In View" (melhor prática p/ REST)
+spring.jpa.open-in-view=false
+  
+  # Fatiamento de coleções LAZY (mitiga N+1)
+spring.jpa.properties.hibernate.default_batch_fetch_size=50
+  
+  # Timezone consistente (OffsetDateTime + DB)
+spring.jpa.properties.hibernate.jdbc.time_zone=UTC
+  
+  # ========== JACKSON (datas) ==========
+spring.jackson.time-zone=UTC
+spring.jackson.serialization.write-dates-as-timestamps=false
+  
+  # ========== SEGURANÇA ==========
+  # Se você **usa JWT** e sua própria auth, REMOVA estas 2 linhas abaixo.
+  # Elas só servem para habilitar um usuário padrão do Basic Auth.
+spring.security.user.name=admin
+spring.security.user.password=admin
+  
+  # ========== JWT ==========
+  # Atenção: confira se estes nomes batem com o que seu SecurityConfig espera
+jwt.secret=4a0f1m0WmC3o8Q2E1S8JmRL7+SxGQ4y7F7z7c7q9pKk=
+jwt.expiration=86400000
+  
+  # ========== SERVIDOR ==========
+server.address=0.0.0.0
+  # server.port=8080  # padrão; ajuste se necessário
+  
+  # ========== ACTUATOR ==========
+spring.application.name=quadrago-api
+management.endpoints.web.exposure.include=*
+management.endpoint.health.show-details=always
+  
+  # ========== SPRING BOOT ADMIN (CLIENTE) ==========
+spring.boot.admin.client.url=http://admin-server:8080
+spring.boot.admin.client.instance.management-url=http://backend:8080/actuator
+spring.boot.admin.client.instance.health-url=http://backend:8080/actuator/health
+spring.boot.admin.client.instance.service-url=http://backend:8080
+spring.boot.admin.client.username=admin
+spring.boot.admin.client.password=admin
+logging.level.de.codecentric.boot.admin.client.registration=DEBUG
+  
+  # ========== SEEDS (DataInitializer) ==========
+  # Admin sempre garantido se enabled=true e e-mail não existir
+app.seed.admin.enabled=true
+app.seed.admin.email=admin@quadrago.local
+app.seed.admin.password=admin
+  
+  # Usuários de demonstração (teacher/student)
+app.seed.demo.enabled=false
+  
+  # ========== LOGGING ==========
+logging.level.org.springframework.security=DEBUG
+logging.level.com.quadrago.backend=DEBUG
+# Para ver valores de parâmetros em SQL (útil em debug):
+# logging.level.org.hibernate.orm.jdbc.bind=TRACE
