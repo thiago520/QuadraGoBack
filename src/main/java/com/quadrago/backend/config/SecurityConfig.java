@@ -88,6 +88,7 @@ public class SecurityConfig {
 
                         // Área administrativa
                         .requestMatchers("/admin/**").hasRole(ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/dashboard/**").hasAnyRole(TEACHER, ADMIN)
 
                         // Qualquer outra rota requer autenticação
                         .anyRequest().authenticated()

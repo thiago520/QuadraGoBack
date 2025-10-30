@@ -1,0 +1,48 @@
+name: CI (backend)
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+concurrency:
+  group: ci-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'            # cache automático do ~/.m2
+      - name: Maven test
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -q -Dspring.profiles.active=test test
+
+  build:
+    name: build
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+      - name: Maven package (skip tests)
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -q -DskipTests package
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: quadrago-backend-jar
+          path: target/*.jar
