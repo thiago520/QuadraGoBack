@@ -114,18 +114,29 @@ public class SecurityConfig {
         return provider;
     }
 
-    /** CORS simples (ajuste origin/headers/methods conforme seu front) */
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(List.of("*")); // TROQUE em produção
+
+        // Em dev: liste explicitamente as origens do front
+        cfg.setAllowedOriginPatterns(List.of(
+                "http://localhost:4200",
+                "http://127.0.0.1:4200"
+        ));
+
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        cfg.setExposedHeaders(List.of("Location"));
         cfg.setAllowCredentials(true);
+        // (opcional) cache do preflight
+        cfg.setMaxAge(3600L);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
         return source;
     }
+
 
     /** Logs 401 com path e mensagem */
     @Bean

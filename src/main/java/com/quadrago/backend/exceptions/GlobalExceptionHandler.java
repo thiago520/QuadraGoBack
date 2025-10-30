@@ -1,132 +1,98 @@
 package com.quadrago.backend.exceptions;
 
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.ConstraintViolationException;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.ErrorResponseException;
 
-import java.time.LocalDateTime;
-import java.util.*;
-
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /* ------------ Validations (DTO/body/params) ------------ */
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Object> handleValidationErrors(MethodArgumentNotValidException ex) {
-        List<String> errors = ex.getBindingResult()
+    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+        List<Map<String, Object>> errors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(this::formatFieldError)
-                .toList();
+                .map(fe -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("field", fe.getField());
+                    m.put("message", fe.getDefaultMessage());
+                    m.put("rejectedValue", fe.getRejectedValue());
+                    return m;
+                }).collect(Collectors.toList());
 
-        log.warn("400 Bad Request - validation errors: {}", errors);
-        return build(HttpStatus.BAD_REQUEST, "Validation failed", Map.of("errors", errors));
+        ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        pd.setTitle("Validation failed");
+        pd.setDetail("Your request has validation errors.");
+        pd.setProperty("errors", errors);
+        return pd;
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex) {
-        List<String> errors = ex.getConstraintViolations()
-                .stream()
-                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
-                .toList();
-
-        log.warn("400 Bad Request - constraint violations: {}", errors);
-        return build(HttpStatus.BAD_REQUEST, "Constraint violation", Map.of("errors", errors));
-    }
-
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<Object> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String message = String.format("Parameter '%s' with value '%s' could not be converted to type '%s'",
-                ex.getName(), ex.getValue(), ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
-        log.warn("400 Bad Request - {}", message);
-        return build(HttpStatus.BAD_REQUEST, message, null);
-    }
-
-    @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<Object> handleMissingParam(MissingServletRequestParameterException ex) {
-        String message = String.format("Missing required parameter '%s'", ex.getParameterName());
-        log.warn("400 Bad Request - {}", message);
-        return build(HttpStatus.BAD_REQUEST, message, null);
-    }
-
-    /* ------------------- AuthZ/AuthN ------------------- */
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Object> handleBadCredentials(BadCredentialsException ex) {
-        log.warn("401 Unauthorized - {}", ex.getMessage());
-        return build(HttpStatus.UNAUTHORIZED, "Invalid credentials", null);
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleNotReadable(HttpMessageNotReadableException ex) {
+        ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        pd.setTitle("Malformed JSON");
+        pd.setDetail("Request body is missing or malformed.");
+        return pd;
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex) {
-        log.warn("403 Forbidden - {}", ex.getMessage());
-        return build(HttpStatus.FORBIDDEN, "Access denied", null);
-    }
-
-    /* ------------------- Persistence ------------------- */
-
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<Object> handleEntityNotFound(EntityNotFoundException ex) {
-        log.warn("404 Not Found - {}", ex.getMessage());
-        return build(HttpStatus.NOT_FOUND, ex.getMessage() != null ? ex.getMessage() : "Resource not found", null);
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Object> handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.warn("409 Conflict - Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
-        return build(HttpStatus.CONFLICT, "Data integrity violation", null);
-    }
-
-    /* ------------------- Generic fallbacks ------------------- */
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Object> handleIllegalArgument(IllegalArgumentException ex) {
-        log.warn("400 Bad Request - {}", ex.getMessage());
-        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        pd.setTitle("Access denied");
+        pd.setDetail("You do not have permission to perform this action.");
+        return pd;
     }
 
     @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<Object> handleNoSuchElement(NoSuchElementException ex) {
-        log.warn("404 Not Found - {}", ex.getMessage());
-        return build(HttpStatus.NOT_FOUND, ex.getMessage() != null ? ex.getMessage() : "Resource not found", null);
+    public ProblemDetail handleNotFound(NoSuchElementException ex) {
+        ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        pd.setTitle("Not found");
+        pd.setDetail(ex.getMessage() != null ? ex.getMessage() : "Resource not found.");
+        return pd;
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Object> handleRuntime(RuntimeException ex) {
-        String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
-        log.error("500 Internal Server Error - {}", msg, ex);
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", Map.of("detail", msg));
-    }
-
-    /* ------------------- Helpers ------------------- */
-
-    private String formatFieldError(FieldError error) {
-        return String.format("%s: %s", error.getField(), error.getDefaultMessage());
-    }
-
-    private ResponseEntity<Object> build(HttpStatus status, String message, Map<String, Object> extra) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", LocalDateTime.now());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", message);
-
-        if (extra != null && !extra.isEmpty()) {
-            body.putAll(extra);
+    @ExceptionHandler(ResponseStatusException.class)
+    public ProblemDetail handleResponseStatus(ResponseStatusException ex) {
+        HttpStatusCode status = ex.getStatusCode();
+        ProblemDetail pd = ProblemDetail.forStatus(status);
+        pd.setTitle("Request error");
+        if (ex.getReason() != null) {
+            pd.setDetail(ex.getReason());
         }
+        return pd;
+    }
 
-        return new ResponseEntity<>(body, status);
+    @ExceptionHandler(ErrorResponseException.class)
+    public ProblemDetail handleErrorResponse(ErrorResponseException ex) {
+        // Em Spring 6/Boot 3, ErrorResponseException já contém um ProblemDetail pronto
+        ProblemDetail body = ex.getBody();
+        if (body == null) {
+            body = ProblemDetail.forStatus(ex.getStatusCode());
+            body.setTitle("Request error");
+            body.setDetail(ex.getMessage());
+        }
+        return body;
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleGeneric(Exception ex) {
+        ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        pd.setTitle("Internal error");
+        pd.setDetail("An unexpected error occurred.");
+        pd.setProperty("exception", ex.getClass().getName());
+        return pd;
     }
 }

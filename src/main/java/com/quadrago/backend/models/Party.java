@@ -1,10 +1,9 @@
 package com.quadrago.backend.models;
 
 import com.quadrago.backend.enums.PartyType;
+import com.quadrago.backend.models.base.Timestamped;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "party")
@@ -13,7 +12,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Party {
+public class Party extends Timestamped {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,13 +21,4 @@ public class Party {
     @Column(nullable = false)
     private PartyType partyType;
 
-    @Column(nullable = false)
-    private OffsetDateTime createdAt = OffsetDateTime.now();
-    @Column(nullable = false)
-    private OffsetDateTime updatedAt = OffsetDateTime.now();
-
-    @PreUpdate
-    void touch() {
-        this.updatedAt = OffsetDateTime.now();
-    }
 }

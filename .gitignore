@@ -1,33 +1,76 @@
-HELP.md
+# --- Build / Compilados
 target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# relatórios de testes (já ficam dentro de target, mas por redundância)
+surefire-reports/
+failsafe-reports/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# --- Logs / dumps de JVM
+*.log
+logs/
+log/
+spring.log
+hs_err_pid*
+replay_pid*
+hsperfdata_*/
+heapdump*.hprof
+gc.log*
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# --- Docker / Compose / Env
+.docker/
+docker-compose.override.yml
+.env
+.env.*
+!.env.example
+
+# --- Configs locais do Spring (não versionar segredos/overrides locais)
+src/main/resources/application-local.properties
+src/main/resources/application-local.yml
+src/main/resources/application-*.local.properties
+src/main/resources/application-*.local.yml
+src/main/resources/application-*.secret.*
+src/main/resources/*.private.*
+!src/main/resources/application-*.example.*
+
+# --- Postman (ambiente local com segredos)
+*postman-environment*.json
+!*environment*.example.json
+# (Mantenha a collection .json normal se quiser)
+
+# --- IDEs / Editores
+.idea/
 *.iml
-*.ipr
+.project
+.classpath
+.settings/
+.factorypath
+.nb-configuration.xml
+out/
+bin/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+# --- VS Code (permitindo apenas arquivos úteis)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 
-### VS Code ###
-.vscode/
+# --- SO / misc
+.DS_Store
+Thumbs.db
+.tmp/
+tmp/
+temp/
+
+# --- Maven (não é comum cair aqui, mas se alguém criou por engano)
+.mvn/timing.properties
+# ATENÇÃO: maven wrapper DEVE ser versionado
+#!.mvn/wrapper/maven-wrapper.jar  # (não ignore o wrapper)
+
+# --- Volumes locais de banco via docker (ajuste se usar outro nome)
+/data/
+/db-data/
+/pgdata/
+/postgres-data/
+/docker-data/
+
+/.m2/   # caso alguém tenha criado um .m2 dentro do repo por engano

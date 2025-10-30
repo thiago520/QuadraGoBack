@@ -1,9 +1,8 @@
 package com.quadrago.backend.models;
 
+import com.quadrago.backend.models.base.Timestamped;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "organization")
@@ -12,7 +11,7 @@ import java.time.OffsetDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Organization {
+public class Organization extends Timestamped {
     @Id
     @Column(name = "party_id")
     private Long partyId;
@@ -27,14 +26,4 @@ public class Organization {
     @Column(unique = true)
     private String cnpj;
     private String stateInsc;
-
-    @Column(nullable = false)
-    private OffsetDateTime createdAt = OffsetDateTime.now();
-    @Column(nullable = false)
-    private OffsetDateTime updatedAt = OffsetDateTime.now();
-
-    @PreUpdate
-    void touch() {
-        this.updatedAt = OffsetDateTime.now();
-    }
 }

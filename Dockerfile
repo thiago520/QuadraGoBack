@@ -1,34 +1,32 @@
-# Etapa 1: Build com Maven e Java 22
-FROM maven:3.9.6-eclipse-temurin-22-alpine AS builder
+# Etapa 1: Build com Maven e Java 22 (cache amigável)
+FROM maven:3.9.9-eclipse-temurin-22-alpine AS builder
 
-# Diretório de trabalho no container
 WORKDIR /build
 
-# Copia arquivos do projeto para dentro do container
+# Cache de dependências primeiro
 COPY pom.xml .
+RUN mvn -B -DskipTests dependency:go-offline
+
+# Agora traz o código-fonte
 COPY src ./src
 
-# Compila o projeto e gera o JAR (sem testes, se desejar remova o -DskipTests)
-RUN mvn clean package -DskipTests
+# Empacota (sem testes; ajuste se quiser rodá-los)
+RUN mvn -B clean package -DskipTests
 
-# Etapa 2: Runtime com JDK 22 leve (sem Maven)
+# Etapa 2: Runtime leve
 FROM eclipse-temurin:22-jdk-alpine
-
-# Criar usuário não-root para segurança
+# Usuário não-root
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Diretório onde a aplicação será executada
 WORKDIR /app
 
-# Copiar o JAR gerado da etapa anterior
-COPY --from=builder /build/target/*.jar app.jar
+# Copia JAR da etapa de build
+COPY --from=builder /build/target/*.jar /app/app.jar
 
-# Dar permissão ao usuário appuser
+# Permissões
 RUN chown -R appuser:appgroup /app
 USER appuser
 
-# Expõe a porta padrão da aplicação
 EXPOSE 8080
 
-# Comando de execução com suporte a JAVA_OPTS
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# JAVA_OPTS opcional (ex.: -Xms256m -Xmx512m)
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]
